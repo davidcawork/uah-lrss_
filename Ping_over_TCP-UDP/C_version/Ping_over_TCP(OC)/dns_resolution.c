@@ -34,6 +34,9 @@ int main(int argc, char * argv []){
             printf("\tHost name: %s\n", aux_host->h_name);
             printf("\tHost alias: %s\n", aux_host->h_aliases[0]);
             printf("\tHost IP: %s\n", inet_ntoa(*((struct in_addr *) aux_host->h_addr_list[0])));
+            printf("\tHost IP: %s\n", inet_ntoa(*((struct in_addr *) aux_host->h_addr_list[1])));
+            printf("\tHost IP: %s\n", inet_ntoa(*((struct in_addr *) aux_host->h_addr_list[2])));
+            printf("\tHost IP: %s\n", inet_ntoa(*((struct in_addr *) aux_host->h_addr_list[3])));
         }
     }
 
