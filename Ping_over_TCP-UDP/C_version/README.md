@@ -1,6 +1,8 @@
-***C verion for ping tool
+# C verion for ping tool
 
-**Links
+## Links
+
+
 http://man7.org/linux/man-pages/man3/gethostbyname.3.html
 http://man7.org/linux/man-pages/man2/connect.2.html
 http://man7.org/linux/man-pages/man2/socket.2.html
