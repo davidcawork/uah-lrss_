@@ -26,17 +26,18 @@ int main(int argc, char * argv []){
         exit(1);
     }else{
 
-        /*  Let's check our host  */
-        if((aux_host = gethostbyname(argv[1])) == NULL){
+        /*  Let's check our host  */;
+        aux_host = gethostbyname(argv[1]);
+        if((aux_host) == NULL){
+
            printf("Cannot find Ip\n"); 
            exit(1);
+
         }else{
+
             printf("\tHost name: %s\n", aux_host->h_name);
             printf("\tHost alias: %s\n", aux_host->h_aliases[0]);
-            printf("\tHost IP: %s\n", inet_ntoa(*((struct in_addr *) aux_host->h_addr_list[0])));
-            printf("\tHost IP: %s\n", inet_ntoa(*((struct in_addr *) aux_host->h_addr_list[1])));
-            printf("\tHost IP: %s\n", inet_ntoa(*((struct in_addr *) aux_host->h_addr_list[2])));
-            printf("\tHost IP: %s\n", inet_ntoa(*((struct in_addr *) aux_host->h_addr_list[3])));
+            printf("\tHost IP: %s\n", inet_ntoa(*((struct in_addr *) aux_host->h_addr_list[0])));  
         }
     }
 
