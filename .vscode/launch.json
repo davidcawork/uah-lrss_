@@ -5,13 +5,22 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "(gdb) Launch",
+            "type": "gdb",
+            "request": "launch",
+            "name": "Launch Program",
+            "target": "./Ping_over_TCP-UDP/C_version/Ping_over_TCP(OC)/ping_oc localhost 5000",
+            
+            "cwd": "${workspaceRoot}"
+        },
+        {
+            "name": "conf 1",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspace}ping_oc",
-            "args": ["localhost","5000"],
+            "program": "${workspaceFolder}/Ping_over_TCP-UDP/C_version/Ping_over_TCP_OC/ping_oc",
+            "args": ["localhost",
+                     "5000"],
             "stopAtEntry": false,
-            "cwd": "${workspace}",
+            "cwd": "${workspaceFolder}",
             "environment": [],
             "externalConsole": true,
             "MIMode": "gdb",

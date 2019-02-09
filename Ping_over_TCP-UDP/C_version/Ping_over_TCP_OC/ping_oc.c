@@ -83,6 +83,8 @@ int main(int argc, char * argv []){
         
         /*  DNS query */
         pet_ping.resolv = gethostbyname(argv[1]);
+        
+
         if((pet_ping.resolv) == NULL){
            printf("Error: cannot find Ip\n"); 
            exit(1);
@@ -106,11 +108,12 @@ int main(int argc, char * argv []){
             memset(&pet_ping.server, 0 , sizeof(struct sockaddr_in)); 
             pet_ping.server.sin_family = AF_INET;
             pet_ping.server.sin_port = htons(atoi(pet_ping.port)); /* To big Endian   */
-
+            pet_ping.server.sin_addr.s_addr = inet_addr(pet_ping.server_name);
+            /*
             if(inet_pton(AF_INET, pet_ping.server_name, &pet_ping.server.sin_addr.s_addr)){
                 printf("Error: cannot convert <Ip/destination> into a 32-bit binary repr\n");
                 exit(1);
-            }
+            }*/
 
             /*  Create a stream socket - TCP */
             if((pet_ping.socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0){
@@ -125,7 +128,7 @@ int main(int argc, char * argv []){
             }
 
             /* First Ping */
-            printf("Enviando\n");
+
             Send_ping(&pet_ping, ping_request, &n_data_,&init_send);
 
             while(shouldKeep_pinging){
