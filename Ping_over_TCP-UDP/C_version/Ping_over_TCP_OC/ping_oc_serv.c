@@ -28,7 +28,7 @@
 
 #define MAX_CONNECTIONS 7
 #define BUFFER_SIZE 256
-#define REPLY "Ping : Reply (0)\n"
+#define REPLY "Ping : Reply (0)_______________________________________________\n"
 
 int main(int argc, char * argv []){
 

@@ -32,7 +32,7 @@
 #define BUFFER_SIZE 256
 #define INTERVAL_REQUEST 2000 /* units: ms (2s)  Windows use 4sec() and Linux 1 for non-super user(Source: manual page(ping))*/
 #define REQUEST "Ping : Request (8)\n"
-#define REPLY "Ping : Reply (0)\n"
+#define REPLY "Ping : Reply (0)_______________________________________________\n"
 
 
 /*  Main data structure for make a ping request */
@@ -55,7 +55,7 @@ void CTRLDhandler(int a);
 void Send_ping(ping_t * , char *, ssize_t *, clock_t * );
 void waitReply(ping_t * ,ssize_t * , clock_t * );
 int  IntervalTimer(clock_t * , clock_t *);
-void StatisticsPing(ping_t *, char *);
+void StatisticsPing(ping_t *, char *,double);
 
 
 int main(int argc, char * argv []){
@@ -67,6 +67,8 @@ int main(int argc, char * argv []){
     clock_t interval,init_send;
     ssize_t n_data_ = 0;
     
+    time_t init,fin;
+    time(&init);
     /*  ----    Here starts our program     ----  */
 
     /* Prepare CTRL+C exit */
@@ -76,7 +78,7 @@ int main(int argc, char * argv []){
     }
     
     /*  Check arg's   */
-    if(argc < 3){
+    if(argc > 3){
         printf("Error: Usage: %s <destination> <port>\n",argv[0]);
         exit(1);
     }else{
@@ -108,7 +110,8 @@ int main(int argc, char * argv []){
             memset(&pet_ping.server, 0 , sizeof(struct sockaddr_in)); 
             pet_ping.server.sin_family = AF_INET;
             pet_ping.server.sin_port = htons(atoi(pet_ping.port)); /* To big Endian   */
-            pet_ping.server.sin_addr.s_addr = inet_addr(pet_ping.server_name);
+            //pet_ping.server.sin_addr.s_addr = inet_addr(pet_ping.server_name);
+            bcopy((char *)pet_ping.resolv->h_addr_list[0],(char *)&pet_ping.server.sin_addr.s_addr,pet_ping.resolv->h_length);
             /*
             if(inet_pton(AF_INET, pet_ping.server_name, &pet_ping.server.sin_addr.s_addr)){
                 printf("Error: cannot convert <Ip/destination> into a 32-bit binary repr\n");
@@ -122,13 +125,13 @@ int main(int argc, char * argv []){
             }
 
             /*  Connect to server   */
-            if( connect(pet_ping.socket, (struct sockaddr *)&pet_ping.server,sizeof(struct sockaddr_in)) < 0){
+            if( connect(pet_ping.socket, (struct sockaddr *)&pet_ping.server,sizeof(pet_ping.server)) < 0){
                 printf("Error: cannot Connect to server :L \n");
                 exit(1);
             }
 
             /* First Ping */
-
+            printf("\nPING %s (%s) with %d bytes of data.\n",argv[1], inet_ntoa(*((struct in_addr *) pet_ping.resolv->h_addr_list[0])), sizeof(REQUEST));
             Send_ping(&pet_ping, ping_request, &n_data_,&init_send);
 
             while(shouldKeep_pinging){
@@ -138,11 +141,11 @@ int main(int argc, char * argv []){
                 
                 /*  Should we ping again, the interval has reached? */
                 if(timer_ms >= INTERVAL_REQUEST){ 
-                      
+                    
                     Send_ping(&pet_ping, ping_request, &n_data_,&init_send);
 
                 }else if(pet_ping.pings_sent > pet_ping.pings_rcv){
-                   
+                    
                     waitReply(&pet_ping,&n_data_,&init_send); 
 
                 }else if(pet_ping.pings_lost == 15){
@@ -150,8 +153,8 @@ int main(int argc, char * argv []){
                 }
             }
 
-            
-            StatisticsPing(&pet_ping,argv[1]);
+            time(&fin);
+            StatisticsPing(&pet_ping,argv[1],difftime(fin ,init));
             close(pet_ping.socket);
         }
 
@@ -212,7 +215,6 @@ void waitReply(ping_t * pet, ssize_t * n_data_recv,  clock_t * init_send){
         pet->buffer[*n_data_recv] = '\0';
         pet->data_recv += *(n_data_recv);
 
-        
         if(IntervalTimer(&aux_intv,init_send) > (0.9*INTERVAL_REQUEST)){
             
             pet->pings_lost++;
@@ -221,8 +223,9 @@ void waitReply(ping_t * pet, ssize_t * n_data_recv,  clock_t * init_send){
     }
  
     if(total_data_rcv  == (strlen(REPLY))){
-        printf("%d bytes from %s (%s): time = %d (ms)\n", total_data_rcv, pet->resolv->h_name,inet_ntoa(*((struct in_addr *) pet->resolv->h_addr_list[0])),IntervalTimer(&aux_intv,init_send));
         pet->pings_rcv++;
+        printf("%d bytes from %s (%s): num_seq=%d time=%d ms\n", total_data_rcv, pet->resolv->h_name,inet_ntoa(*((struct in_addr *) pet->resolv->h_addr_list[0])),pet->pings_rcv,IntervalTimer(&aux_intv,init_send));
+        
     }
 }
 
@@ -231,8 +234,10 @@ int  IntervalTimer(clock_t * interval, clock_t * init_send){
     return (((*interval) * 1000) / CLOCKS_PER_SEC);
 }
 
-void StatisticsPing(ping_t * pet, char * name){
+void StatisticsPing(ping_t * pet, char * name, double  tm){
+    /*   Var.aux    */
+    
 
     printf("\n--- %s ping statistics ---\n",name);
-    printf("%d packets transmitted, %d received, %0.3f%c packet loss\n\n",pet->pings_sent, (pet->pings_rcv), 100*((float)(pet->pings_lost)/pet->pings_sent),0x25);
+    printf("%d packets transmitted, %d received, %0.3f%c packet loss, total time %f (ms)\n\n",pet->pings_sent, (pet->pings_rcv), 100*((float)(pet->pings_lost)/pet->pings_sent),0x25, 1000*tm);
 }
