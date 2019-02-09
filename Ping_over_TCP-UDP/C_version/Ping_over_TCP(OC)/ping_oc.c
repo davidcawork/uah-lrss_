@@ -4,7 +4,7 @@
  *                    (1) University of Alcala, Spain.
  *                    
  *  
- *  Ping tool over tcp     
+ *  Ping tool over tcp (Client) 
  *    
  *  Usage : ./ping_oc.out <IP/destination> <Port>
  *   
@@ -32,7 +32,9 @@
 #define BUFFER_SIZE 256
 #define INTERVAL_REQUEST 2000 /* units: ms (2s)  Windows use 4sec() and Linux 1 for non-super user(Source: manual page(ping))*/
 #define REQUEST "Ping : Request (8)\n"
- 
+#define REPLY "Ping : Reply (0)\n"
+
+
 /*  Main data structure for make a ping request */
 typedef struct ping{
 
@@ -41,7 +43,7 @@ typedef struct ping{
     int socket;
     struct sockaddr_in server;
     char buffer[BUFFER_SIZE];
-    int pings_sended,pings_lost;
+    int pings_sent,pings_lost, pings_rcv;
     ssize_t data_send, data_recv; //Units : bytes
     struct hostent * resolv;
     
@@ -51,7 +53,7 @@ typedef struct ping{
 volatile bool shouldKeep_pinging = true;
 void CTRLDhandler(int a);
 void Send_ping(ping_t * , char *, ssize_t *, clock_t * );
-void waitReply(ping_t * ,ssize_t *, clock_t * , clock_t * );
+void waitReply(ping_t * ,ssize_t * , clock_t * );
 int  IntervalTimer(clock_t * , clock_t *);
 void StatisticsPing(ping_t *, char *);
 
@@ -86,15 +88,22 @@ int main(int argc, char * argv []){
            exit(1);
         }else{  
             
-            pet_ping.pings_sended = 0;
+            pet_ping.pings_sent = 0;
+            pet_ping.pings_rcv = 0;
             pet_ping.pings_lost=0;
             pet_ping.data_send = 0;
             pet_ping.data_recv = 0;
             pet_ping.server_name = pet_ping.resolv->h_addr_list[0];
             pet_ping.port = argv[2];
 
-            /*Lenar de ceros*/
-            memset(&pet_ping.server, 0 , sizeof(struct sockaddr_in)); /* Explicado en la memoria*/
+            /*     
+             *  Let's fill our socket addr with 0, for compatibility (struct sockaddr_in) - (struct sockaddr)
+             * 
+             *  It'll be better explained in the readme or in the memory, still I don't know what I will do :s
+             *
+             */
+
+            memset(&pet_ping.server, 0 , sizeof(struct sockaddr_in)); 
             pet_ping.server.sin_family = AF_INET;
             pet_ping.server.sin_port = htons(atoi(pet_ping.port)); /* To big Endian   */
 
@@ -116,20 +125,26 @@ int main(int argc, char * argv []){
             }
 
             /* First Ping */
+            printf("Enviando\n");
             Send_ping(&pet_ping, ping_request, &n_data_,&init_send);
 
             while(shouldKeep_pinging){
 
                 /*    Get Interval    */
                 timer_ms = IntervalTimer(&interval,&init_send);
-
+                
                 /*  Should we ping again, the interval has reached? */
-                if(timer_ms >= INTERVAL_REQUEST){   
+                if(timer_ms >= INTERVAL_REQUEST){ 
+                      
                     Send_ping(&pet_ping, ping_request, &n_data_,&init_send);
+
+                }else if(pet_ping.pings_sent > pet_ping.pings_rcv){
+                   
+                    waitReply(&pet_ping,&n_data_,&init_send); 
+
+                }else if(pet_ping.pings_lost == 15){
+                    break;
                 }
-
-                waitReply(&pet_ping,&n_data_,&interval,&init_send);   
-
             }
 
             
@@ -158,17 +173,17 @@ void Send_ping(ping_t * pet, char * request, ssize_t * n_data_sent,clock_t * ini
         printf("Error: cannot send a request\n");
         exit(1);
     }else{
-        pet->pings_sended++;
+        pet->pings_sent++;
         pet->data_send += *(n_data_sent) ;
     }
 }
 
-void waitReply(ping_t * pet, ssize_t * n_data_recv, clock_t * interval, clock_t * init_send){
+void waitReply(ping_t * pet, ssize_t * n_data_recv,  clock_t * init_send){
     /*  Var.aux */
     size_t total_data_rcv = 0;
-
+    clock_t aux_intv;
     /*
-     *  Let's assume that if we don't receive a response before 90% of the send interval, 
+     *  Let's assume that if we don't receive a response before 80% of the send interval, 
      *  the ping has been lost. 
      *  
      *  With this approach we try that there are no race conditions at the time of sending and receiving pings,
@@ -180,10 +195,11 @@ void waitReply(ping_t * pet, ssize_t * n_data_recv, clock_t * interval, clock_t 
      *  :)
      * 
      */
-
-    while((IntervalTimer(interval,init_send) < (0.9*INTERVAL_REQUEST))    ||   (total_data_rcv  < (strlen(REQUEST))) ){
-        
+    
+    while( total_data_rcv  < (strlen(REPLY)) ){
+     
         *(n_data_recv) = recv(pet->socket,pet->buffer,BUFFER_SIZE -1 , 0);
+       
         if(*(n_data_recv) < 0){
             printf("Error: cannot recv data\n");
             exit(1);
@@ -193,12 +209,17 @@ void waitReply(ping_t * pet, ssize_t * n_data_recv, clock_t * interval, clock_t 
         pet->buffer[*n_data_recv] = '\0';
         pet->data_recv += *(n_data_recv);
 
+        
+        if(IntervalTimer(&aux_intv,init_send) > (0.9*INTERVAL_REQUEST)){
+            
+            pet->pings_lost++;
+            break;
+        }
     }
-
-    if(total_data_rcv  == (strlen(REQUEST))){
-        printf("%d bytes from %s (%s): time= %d (ms)\n", total_data_rcv, pet->resolv->h_name,inet_ntoa(*((struct in_addr *) pet->resolv->h_addr_list[0])),IntervalTimer(interval,init_send));
-    }else{
-        pet->pings_lost++;
+ 
+    if(total_data_rcv  == (strlen(REPLY))){
+        printf("%d bytes from %s (%s): time = %d (ms)\n", total_data_rcv, pet->resolv->h_name,inet_ntoa(*((struct in_addr *) pet->resolv->h_addr_list[0])),IntervalTimer(&aux_intv,init_send));
+        pet->pings_rcv++;
     }
 }
 
@@ -209,6 +230,6 @@ int  IntervalTimer(clock_t * interval, clock_t * init_send){
 
 void StatisticsPing(ping_t * pet, char * name){
 
-    printf("--- %s ping statistics ---\n",name);
-    printf("%d packets transmitted, %d received, %f %c packet loss\n",pet->pings_sended, (pet->pings_sended - pet->pings_lost), 100*((float)(pet->pings_lost)/pet->pings_sended),0x25);
+    printf("\n--- %s ping statistics ---\n",name);
+    printf("%d packets transmitted, %d received, %0.3f%c packet loss\n\n",pet->pings_sent, (pet->pings_rcv), 100*((float)(pet->pings_lost)/pet->pings_sent),0x25);
 }
