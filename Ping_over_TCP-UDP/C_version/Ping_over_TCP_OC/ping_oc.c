@@ -33,7 +33,7 @@
 #define INTERVAL_REQUEST 2000 /* units: ms (2s)  Windows use 4sec() and Linux 1 for non-super user(Source: manual page(ping))*/
 #define REQUEST "Ping : Request (8)\n"
 #define REPLY "Ping : Reply (0)_______________________________________________\n"
-
+#define MAX_PINGS_LOST 15
 
 /*  Main data structure for make a ping request */
 typedef struct ping{
@@ -66,9 +66,10 @@ int main(int argc, char * argv []){
     int timer_ms = 0;
     clock_t interval,init_send;
     ssize_t n_data_ = 0;
-    
     time_t init,fin;
     time(&init);
+
+
     /*  ----    Here starts our program     ----  */
 
     /* Prepare CTRL+C exit */
@@ -110,7 +111,6 @@ int main(int argc, char * argv []){
             memset(&pet_ping.server, 0 , sizeof(struct sockaddr_in)); 
             pet_ping.server.sin_family = AF_INET;
             pet_ping.server.sin_port = htons(atoi(pet_ping.port)); /* To big Endian   */
-            //pet_ping.server.sin_addr.s_addr = inet_addr(pet_ping.server_name);
             bcopy((char *)pet_ping.resolv->h_addr_list[0],(char *)&pet_ping.server.sin_addr.s_addr,pet_ping.resolv->h_length);
             /*
             if(inet_pton(AF_INET, pet_ping.server_name, &pet_ping.server.sin_addr.s_addr)){
@@ -144,15 +144,21 @@ int main(int argc, char * argv []){
                     
                     Send_ping(&pet_ping, ping_request, &n_data_,&init_send);
 
+                /*  Just enter to receive if there are pings to receive,
+                    we do not want it to be left waiting for pings that do not exist 
+                    (The server is a passive element, only responds)*/
+
                 }else if(pet_ping.pings_sent > pet_ping.pings_rcv){
                     
                     waitReply(&pet_ping,&n_data_,&init_send); 
-
-                }else if(pet_ping.pings_lost == 15){
+                
+                /*  I consider that if 15 pings have been lost the server is not reachable  */
+                }else if(pet_ping.pings_lost == MAX_PINGS_LOST){
                     break;
                 }
             }
 
+            /*  If user do CTRL+C : track fin time(Not too accurarte, just seconds of precision) , and show the statistics + close the connection */
             time(&fin);
             StatisticsPing(&pet_ping,argv[1],difftime(fin ,init));
             close(pet_ping.socket);
@@ -235,9 +241,8 @@ int  IntervalTimer(clock_t * interval, clock_t * init_send){
 }
 
 void StatisticsPing(ping_t * pet, char * name, double  tm){
-    /*   Var.aux    */
+   
     
-
     printf("\n--- %s ping statistics ---\n",name);
     printf("%d packets transmitted, %d received, %0.3f%c packet loss, total time %f (ms)\n\n",pet->pings_sent, (pet->pings_rcv), 100*((float)(pet->pings_lost)/pet->pings_sent),0x25, 1000*tm);
 }
