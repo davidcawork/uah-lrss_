@@ -82,7 +82,7 @@ int main(int argc, char * argv []){
         while(true){
 
            /*
-            * recvfrom: receive a UDP datagram from a client
+            * Let's recv data :3 
             */
 
             bzero(buffer, BUFFER_SIZE);
@@ -91,13 +91,12 @@ int main(int argc, char * argv []){
                 printf("Error: cannot recv data\n");
                 exit(1);
             }
-            /*
-            resolv = gethostbyaddr((const char *)&client.sin_addr.s_addr, sizeof(client.sin_addr.s_addr), AF_INET);
-            if (resolv == NULL){
-                printf("Error: cannot to get client addr\n");
-                exit(1);
-            }*/        
-
+               
+            
+          /*
+           *    I/O serv 
+           * 
+           */ 
             if(inet_ntop(AF_INET,&client.sin_addr.s_addr, client_name, sizeof(client_name)) != NULL){
                 printf("Client: %s | Port: %d\n",client_name,ntohs(client.sin_port));
             }else{
@@ -106,7 +105,7 @@ int main(int argc, char * argv []){
             }
             
             /* 
-             * sendto: echo the input back to the client 
+             *  Reply our client 
              */
 
             n_data_sent = sendto(socket_serv, reply, strlen(reply), 0, (struct sockaddr *) &client, client_addr_len);
