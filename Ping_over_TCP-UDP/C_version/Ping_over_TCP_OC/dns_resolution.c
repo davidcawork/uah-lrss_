@@ -3,7 +3,7 @@
 
  *                    (1) GIST, University of Alcala, Spain.
  *                    
- *  To get Ip from host using netdb.h utilities 
+ *  To get Ip from host using netdb.h utilities  
  */
 
 #include <stdio.h>      /*  for printf() ... */
