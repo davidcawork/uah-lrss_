@@ -115,7 +115,7 @@ int main(int argc, char * argv []){
                 exit(1);
             }
 
-            close(socket_cl);
+            //close(socket_cl);
         }
     }
 
