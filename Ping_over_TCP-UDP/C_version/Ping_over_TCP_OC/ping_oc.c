@@ -244,5 +244,5 @@ void StatisticsPing(ping_t * pet, char * name, double  tm){
    
     
     printf("\n--- %s ping statistics ---\n",name);
-    printf("%d packets transmitted, %d received, %0.3f%c packet loss, total time %f (ms)\n\n",pet->pings_sent, (pet->pings_rcv), 100*((float)(pet->pings_lost)/pet->pings_sent),0x25, 1000*tm);
+    printf("%d packets transmitted, %d received, %0.3f%c packet loss, total time %0.2f (s)\n\n",pet->pings_sent, (pet->pings_rcv), 100*((float)(pet->pings_lost)/pet->pings_sent),0x25,tm);
 }
