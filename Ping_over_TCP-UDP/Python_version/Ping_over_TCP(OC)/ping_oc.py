@@ -6,7 +6,7 @@ import signal
 from datetime import datetime, date, time, timedelta
 import time
 
-#GLobal var.
+#Global var.
 shouldSend = True
 lista_tm = ()
 num_pck_sent = 0
