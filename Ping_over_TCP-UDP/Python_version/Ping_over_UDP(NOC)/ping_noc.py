@@ -64,4 +64,6 @@ if __name__ == "__main__":
             
             #I/o data
             print(str(sys.getsizeof(data))+' bytes from '+ sys.argv[1] +' ('+str(server_addr)+'): num_seq='+str(num_seq)+' time={:.4f}ms'.format(1000*(t_fin - t_init)))
+        
+        s.close()
 
