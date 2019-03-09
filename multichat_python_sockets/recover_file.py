@@ -1,7 +1,7 @@
 import socket
 
 
-HOST = ''
+HOST = '192.168.1.214'
 PORT = 5000
 CHUNK_SIZE = 5 * 1024
 FILE = "example2.txt"
