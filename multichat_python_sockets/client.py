@@ -148,16 +148,9 @@ if __name__ == "__main__":
                         #fp= open(name_file,"rb")
                         with open(name_file, 'rb') as f:
                             for line in f:
-                                s.sendall(pickle.dumps([name,line,'block'])
-                        s.sendall(pickle.dumps([name,'\0','fin']))
-                                
-                                """
-                        while True:
-                            chunk = fp.read(CHUNCK_SIZE)
-                            if chunk == '':
-                                break
-                            s.sendall(chunk)
-"""
+                                s.sendall(pickle.dumps([name,line,'block']))
+                            s.sendall(pickle.dumps([name,'\0','fin']))
+                   
                     elif is_command(msg,'/help'):
                         #To print help msg 
                         print_help(name)
