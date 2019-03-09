@@ -11,7 +11,7 @@ import time
 
 #Global vars
 MAX_MSG_SAVED = 20 
-CHUNCK_SIZE = 4096
+CHUNCK_SIZE = 256
 #Handler CTRL+C - Close connection with server
 def signal_handler(sig, frame):
     logs.close()
