@@ -124,7 +124,7 @@ if __name__ == "__main__":
                             time.sleep(2)
                             with open(data[2], "wb") as f:        
                                 chunk = s.recv(CHUNCK_SIZE)
-                                while chunk:
+                                for chunck in range(0,data[3]):
                                     f.write(chunk)
                                     chunk = s.recv(CHUNCK_SIZE)
                     else:
