@@ -11,7 +11,7 @@ import time
 
 #Global vars
 MAX_MSG_SAVED = 20 
-CHUNCK_SIZE = 127
+CHUNCK_SIZE = 256
 
 #Handler CTRL+C - Close connection with server
 def signal_handler(sig, frame):
@@ -122,13 +122,15 @@ if __name__ == "__main__":
                         elif data[1] == 'file':
                             now = datetime.datetime.now()
                             print('['+now.strftime('%H:%M:%S')+'] Downloading '+data[2]+' file from '+data[0]+' ('+str(data[3]* CHUNCK_SIZE)+' bytes)')
-                            time.sleep(2)
+                            #time.sleep(2)
                             with open(data[2], "wb") as f:        
                                 chunk = s.recv(CHUNCK_SIZE)
                                 #while chunk[2] is not 'fin':
                                 for chunck in range(0,data[3]):
                                     f.write(chunk)
                                     chunk = s.recv(CHUNCK_SIZE)
+                                    if not chunk:
+                                        break
                             now = datetime.datetime.now()
                             print('['+now.strftime('%H:%M:%S')+'] It has already been downloaded :)')
                     else:
