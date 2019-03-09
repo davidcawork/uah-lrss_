@@ -11,7 +11,7 @@ import time
 
 #Global vars
 MAX_MSG_SAVED = 20 
-CHUNCK_SIZE = 512
+CHUNCK_SIZE = 4096
 #Handler CTRL+C - Close connection with server
 def signal_handler(sig, frame):
     logs.close()
@@ -149,7 +149,7 @@ if __name__ == "__main__":
                         with open(name_file, 'rb') as f:
                             for line in f:
                                 s.sendall(pickle.dumps([name,line,'block']))
-                            s.sendall(pickle.dumps([name,'\0','fin']))
+                            s.sendall(pickle.dumps([name,b'\0','fin']))
                    
                     elif is_command(msg,'/help'):
                         #To print help msg 
