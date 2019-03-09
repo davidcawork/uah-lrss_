@@ -121,7 +121,7 @@ if __name__ == "__main__":
                         elif data[1] == 'file':
                             now = datetime.datetime.now()
                             print('['+now.strftime('%H:%M:%S')+'] Downloading '+data[0]+' file from '+data[2]+' ('+str(data[3]*CHUNCK_SIZE)+' bytes)')
-                            #time.sleep(2)
+                            time.sleep(2)
                             with open(data[2], "wb") as f:        
                                 chunk = s.recv(CHUNCK_SIZE)
                                 while chunk:
