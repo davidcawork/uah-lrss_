@@ -121,7 +121,7 @@ if __name__ == "__main__":
                         elif data[1] == 'file':
                             now = datetime.datetime.now()
                             print('['+now.strftime('%H:%M:%S')+'] Downloading '+data[0]+' file from '+data[2]+' ('+str(data[3]*CHUNCK_SIZE)+' bytes)')
-                            time.sleep(2)
+                            #time.sleep(2)
                             with open(data[2], "wb") as f:        
                                 chunk = s.recv(CHUNCK_SIZE)
                                 while chunk:
@@ -139,11 +139,20 @@ if __name__ == "__main__":
                         name_file = file_split(msg)
                         chuncks = math.ceil(float(os.path.getsize(os.getcwd()+'/'+name_file))/CHUNCK_SIZE)
                         s.sendall(pickle.dumps([name,'file',name_file,chuncks]))
+                        now = datetime.datetime.now()
                         print('['+now.strftime('%H:%M:%S')+'] Sharing '+name_file+' with all the users of the multichat...')
                         time.sleep(2)
+                        #fp= open(name_file,"rb")
                         with open(name_file, 'rb') as f:
-                            s.sendfile(f)
-
+                            for line in f:
+                                s.sendall(line)
+                                """
+                        while True:
+                            chunk = fp.read(CHUNCK_SIZE)
+                            if chunk == '':
+                                break
+                            s.sendall(chunk)
+"""
                     elif is_command(msg,'/help'):
                         #To print help msg 
                         print_help(name)
