@@ -11,7 +11,7 @@ import time
 
 #Global vars
 MAX_MSG_SAVED = 20 
-CHUNCK_SIZE = 256
+CHUNCK_SIZE = 40960000
 
 #Handler CTRL+C - Close connection with server
 def signal_handler(sig, frame):
@@ -109,7 +109,7 @@ if __name__ == "__main__":
 
             for event in events_rd:
                 if event == s:
-                    data = pickle.loads(s.recv(4096))
+                    data = pickle.loads(s.recv(1024))
                     #keys_msg = list(sorted(data.keys()))
 
                     if data:
@@ -121,7 +121,7 @@ if __name__ == "__main__":
                                 print_msgs(msg_history)
                         elif data[1] == 'file':
                             now = datetime.datetime.now()
-                            print('['+now.strftime('%H:%M:%S')+'] Downloading '+data[2]+' file from '+data[0]+' ('+str(data[3]* CHUNCK_SIZE)+' bytes)')
+                            print('['+now.strftime('%H:%M:%S')+'] Downloading '+data[2]+' file from '+data[0]+' ('+str(data[3])+' bytes)')
                             #time.sleep(2)
                             with open(data[2], "wb") as f:        
                                 chunk = s.recv(CHUNCK_SIZE)
