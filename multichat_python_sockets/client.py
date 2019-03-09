@@ -109,7 +109,7 @@ if __name__ == "__main__":
                         if data[1] == 'msg':
                             if data[0] is not name:
                                 now = datetime.datetime.now()
-                                add_to_msgHistory(msg_history,'['+now.strftime('%H:%M:%S')+'] '+data[0]+': '+data[data[1]])
+                                add_to_msgHistory(msg_history,'['+now.strftime('%H:%M:%S')+'] '+data[0]+': '+data[2])
                                 print_msgs(msg_history)
                         elif data[1] == 'file':
                             print('Handle a file') 
