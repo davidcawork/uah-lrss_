@@ -120,14 +120,14 @@ if __name__ == "__main__":
                                 print_msgs(msg_history)
                         elif data[1] == 'file':
                             now = datetime.datetime.now()
-                            print('['+now.strftime('%H:%M:%S')+'] Downloading '+data[0]+' file from '+data[2]+' ('+str(data[3])+' bytes)')
+                            print('['+now.strftime('%H:%M:%S')+'] Downloading '+data[0]+' file from '+data[2]+' ('+str(data[3]* CHUNCK_SIZE)+' bytes)')
                             time.sleep(2)
                             with open(data[2], "wb") as f:        
-                                chunk = s.recv(CHUNCK_SIZE)
-                                while os.path.getsize(os.getcwd()+'/'+data[2]) is not data[3] :
+                                chunk = pickle.loads(s.recv(CHUNCK_SIZE))
+                                while chunk[2] is not 'fin':
                                 #for chunck in range(0,data[3]):
-                                    f.write(chunk)
-                                    chunk = s.recv(CHUNCK_SIZE)
+                                    f.write(chunk[1])
+                                    chunk = pickle.loads(s.recv(CHUNCK_SIZE))
                             now = datetime.datetime.now()
                             print('['+now.strftime('%H:%M:%S')+'] It has already been downloaded :)')
                     else:
@@ -140,15 +140,17 @@ if __name__ == "__main__":
 
                     if is_command(msg,'/file'):  
                         name_file = file_split(msg)
-                        #chuncks = math.ceil(float(os.path.getsize(os.getcwd()+'/'+name_file))/CHUNCK_SIZE)
-                        s.sendall(pickle.dumps([name,'file',name_file,os.path.getsize(os.getcwd()+'/'+name_file)]))
+                        chuncks = math.ceil(float(os.path.getsize(os.getcwd()+'/'+name_file))/CHUNCK_SIZE)
+                        s.sendall(pickle.dumps([name,'file',chuncks]))
                         now = datetime.datetime.now()
                         print('['+now.strftime('%H:%M:%S')+'] Sharing '+name_file+' with all the users of the multichat...')
                         time.sleep(2)
                         #fp= open(name_file,"rb")
                         with open(name_file, 'rb') as f:
                             for line in f:
-                                s.sendall(line)
+                                s.sendall(pickle.dumps([name,line,'block'])
+                        s.sendall(pickle.dumps([name,'','fin']))
+                                
                                 """
                         while True:
                             chunk = fp.read(CHUNCK_SIZE)
