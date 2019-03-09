@@ -102,17 +102,16 @@ if __name__ == "__main__":
             for event in events_rd:
                 if event == s:
                     data = pickle.loads(s.recv(4096))
-                    keys_msg = list(sorted(data.keys()))
+                    #keys_msg = list(sorted(data.keys()))
 
                     if data:
-                        #print(str(data))
                         
-                        if keys_msg[1] == 'msg':
-                            if keys_msg[0] is not name:
+                        if data[1] == 'msg':
+                            if data[0] is not name:
                                 now = datetime.datetime.now()
-                                add_to_msgHistory(msg_history,'['+now.strftime('%H:%M:%S')+'] '+keys_msg[0]+': '+data[keys_msg[1]])
+                                add_to_msgHistory(msg_history,'['+now.strftime('%H:%M:%S')+'] '+data[0]+': '+data[data[1]])
                                 print_msgs(msg_history)
-                        elif keys_msg[1] == 'file':
+                        elif data[1] == 'file':
                             print('Handle a file') 
                     else:
                         logs.close()
@@ -131,7 +130,7 @@ if __name__ == "__main__":
 
                     else:
                         #To send a msg
-                        s.sendall(pickle.dumps({name:'msg','msg':msg}))
+                        s.sendall(pickle.dumps([name,'msg',msg]))
                         now = datetime.datetime.now()
                         add_to_msgHistory(msg_history,'['+now.strftime('%H:%M:%S')+'] Tu: '+msg)
                         print_msgs(msg_history)
