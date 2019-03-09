@@ -120,14 +120,14 @@ if __name__ == "__main__":
                                 print_msgs(msg_history)
                         elif data[1] == 'file':
                             now = datetime.datetime.now()
-                            print('['+now.strftime('%H:%M:%S')+'] Downloading '+data[0]+' file from '+data[2]+' ('+str(data[3]* CHUNCK_SIZE)+' bytes)')
+                            print('['+now.strftime('%H:%M:%S')+'] Downloading '+data[2]+' file from '+data[0]+' ('+str(data[3]* CHUNCK_SIZE)+' bytes)')
                             time.sleep(2)
                             with open(data[2], "wb") as f:        
-                                chunk = pickle.loads(s.recv(CHUNCK_SIZE))
-                                while chunk[2] is not 'fin':
-                                #for chunck in range(0,data[3]):
-                                    f.write(chunk[1])
-                                    chunk = pickle.loads(s.recv(CHUNCK_SIZE))
+                                chunk = s.recv(CHUNCK_SIZE)
+                                #while chunk[2] is not 'fin':
+                                for chunck in range(0,data[3]):
+                                    f.write(chunk)
+                                    chunk = s.recv(CHUNCK_SIZE)
                             now = datetime.datetime.now()
                             print('['+now.strftime('%H:%M:%S')+'] It has already been downloaded :)')
                     else:
@@ -145,11 +145,11 @@ if __name__ == "__main__":
                         now = datetime.datetime.now()
                         print('['+now.strftime('%H:%M:%S')+'] Sharing '+name_file+' with all the users of the multichat...')
                         time.sleep(2)
-                        #fp= open(name_file,"rb")
+                        
                         with open(name_file, 'rb') as f:
                             for line in f:
-                                s.sendall(pickle.dumps([name,line,'block']))
-                            s.sendall(pickle.dumps([name,b'\0','fin']))
+                                s.sendall(line)
+                            
                    
                     elif is_command(msg,'/help'):
                         #To print help msg 
