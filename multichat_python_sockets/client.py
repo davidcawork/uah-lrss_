@@ -102,7 +102,7 @@ if __name__ == "__main__":
             for event in events_rd:
                 if event == s:
                     data = pickle.loads(s.recv(4096))
-                    keys_msg = list(data.keys())
+                    keys_msg = list(sorted(data.keys()))
 
                     if data:
                         #print(str(data))

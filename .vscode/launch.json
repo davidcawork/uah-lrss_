@@ -12,7 +12,7 @@
             "cwd": "${workspaceFolder}/multichat_python_sockets/",
             "program": "${file}",
             "console": "integratedTerminal",
-            "args":["david","localhost","5000"]
+            "args":["yulyy","localhost","5000"]
             
         },
         {
