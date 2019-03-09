@@ -11,7 +11,7 @@ import time
 
 #Global vars
 MAX_MSG_SAVED = 20 
-CHUNCK_SIZE = 4096
+CHUNCK_SIZE = 256
 
 #Handler CTRL+C - Close connection with server
 def signal_handler(sig, frame):
@@ -109,7 +109,7 @@ if __name__ == "__main__":
 
             for event in events_rd:
                 if event == s:
-                    data = pickle.loads(s.recv(1024))
+                    data = pickle.loads(s.recv(512))
                     #keys_msg = list(sorted(data.keys()))
 
                     if data:
