@@ -149,7 +149,7 @@ if __name__ == "__main__":
                         with open(name_file, 'rb') as f:
                             for line in f:
                                 s.sendall(pickle.dumps([name,line,'block'])
-                        s.sendall(pickle.dumps([name,'\0','fin']))
+                            s.sendall(pickle.dumps([name,'\0','fin']))
                                 
                                 """
                         while True:
