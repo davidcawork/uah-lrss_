@@ -123,6 +123,7 @@ if __name__ == "__main__":
                             now = datetime.datetime.now()
                             print('['+now.strftime('%H:%M:%S')+'] Downloading '+data[2]+' file from '+data[0]+' ('+str(data[3])+' bytes)')
                             #time.sleep(2)
+                            
                             with open(data[2], "wb") as f:        
                                 chunk = s.recv(CHUNCK_SIZE)
                                 #while chunk[2] is not 'fin':
@@ -147,7 +148,7 @@ if __name__ == "__main__":
                         s.sendall(pickle.dumps([name,'file',name_file,chuncks]))
                         now = datetime.datetime.now()
                         print('['+now.strftime('%H:%M:%S')+'] Sharing '+name_file+' with all the users of the multichat...')
-                        time.sleep(2)
+                        time.sleep(4)
                         
                         with open(name_file, 'rb') as f:
                             for line in f:
