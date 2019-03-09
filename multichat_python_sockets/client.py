@@ -108,10 +108,9 @@ if __name__ == "__main__":
                         #print(str(data))
                         
                         if keys_msg[1] == 'msg':
-                            if keys_msg[0] is not name:
-                                now = datetime.datetime.now()
-                                add_to_msgHistory(msg_history,'['+now.strftime('%H:%M:%S')+'] '+keys_msg[0]+': '+data[keys_msg[1]])
-                                print_msgs(msg_history)
+                            now = datetime.datetime.now()
+                            add_to_msgHistory(msg_history,'['+now.strftime('%H:%M:%S')+'] '+keys_msg[0]+': '+data[keys_msg[1]])
+                            print_msgs(msg_history)
                         elif keys_msg[1] == 'file':
                             print('Handle a file') 
                     else:
