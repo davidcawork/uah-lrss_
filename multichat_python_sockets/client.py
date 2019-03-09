@@ -127,6 +127,8 @@ if __name__ == "__main__":
                                 for chunck in range(0,data[3]):
                                     f.write(chunk)
                                     chunk = s.recv(CHUNCK_SIZE)
+                            now = datetime.datetime.now()
+                            print('['+now.strftime('%H:%M:%S')+'] It has already been downloaded :)')
                     else:
                         logs.close()
                         s.close()
