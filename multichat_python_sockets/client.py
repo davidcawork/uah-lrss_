@@ -9,16 +9,27 @@ import datetime
 import math
 import time 
 
+
+#Note: We declare here the server descriptor and the log file to be "global variables"
+#      and that these can be accessed by the CTRL + C handler and the connection 
+#      can be closed correctly(the log file too). This can be done with POO in a cleaner way
+#      but I do not have enough time to do it, it is as future improvement for the holidays :) ,
+#      let's say that this is the version: ChatPy v1.0
+#
+#   For more info: github.com/davidcawork
+
 #Global vars
 MAX_MSG_SAVED = 20 
 CHUNCK_SIZE = 256
 
-#Handler CTRL+C - Close connection with server
-def signal_handler(sig, frame):
-    logs.close()
-    s.close()
-    print('Goodbye!\n')
-    sys.exit(0)
+#We parse the info to be able to connect to the server
+name = sys.argv[1]
+host = sys.argv[2]
+port = int(sys.argv[3])
+
+#To connect with our server 
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s.connect((host,port))
 
 #To log all msg 
 def create_logs(name,current_time):
@@ -44,7 +55,19 @@ def create_logs(name,current_time):
             +name+'_'+current_time.strftime('%Y-%m-%d')+'.txt')
     
     return log_file
-    
+
+#Just for logs
+current_time = datetime.datetime.now()
+logs = create_logs(name,current_time)
+
+
+#Handler CTRL+C - Close connection with server
+def signal_handler(sig, frame):
+    logs.close()
+    s.close()
+    print('\n\nGoodbye!\n')
+    sys.exit(0)
+
 def is_command(msg, str_cmd):
     return msg.count(str_cmd)
 
@@ -55,7 +78,9 @@ def print_help(name):
     print('These are the commands that you can use:\n')
     print('\t/help\tTo consult the commands and guides for using the chat')
     print('\t/file\tTo send a file to all multichat users\n\t\tUse: /file <name_of_the_file>')
+    print('\t/quit\tTo exit the multichat')    
     print('\n\nFor more help you can check: https://github.com/davidcawork\n\n')
+    
     input("Press Enter to continue...")
     os.system('clear')
 
@@ -84,21 +109,9 @@ if __name__ == "__main__":
         print('Error: usage: ./' + sys.argv[0] + ' <username> <destination/IP> <Port>')
         sys.exit(0)
     else:
-        #Let's to prepare the CTRL + C signal to handle it and be able  to show the statistics before it comes out
+        #Let's to prepare the CTRL + C signal to handle it and be able  to close the connection
         signal.signal(signal.SIGINT, signal_handler)
 
-        #We parse the info to be able to connect to the server
-        name = sys.argv[1]
-        host = sys.argv[2]
-        port = int(sys.argv[3])
-
-        #To connect with our server 
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.connect((host,port))
-
-        #Just for logs
-        current_time = datetime.datetime.now()
-        logs = create_logs(name,current_time)
 
         #Track all msg
         msg_history = []
@@ -119,6 +132,7 @@ if __name__ == "__main__":
                                 now = datetime.datetime.now()
                                 add_to_msgHistory(msg_history,'['+now.strftime('%H:%M:%S')+'] '+data[0]+': '+data[2])
                                 print_msgs(msg_history)
+                                logs.write('['+now.strftime('%H:%M:%S')+'] '+data[0]+': '+data[2])
                         elif data[1] == 'file':
                             now = datetime.datetime.now()
                             print('['+now.strftime('%H:%M:%S')+'] Downloading '+data[2]+' file from '+data[0]+' ('+str(data[3])+' bytes)')
@@ -153,7 +167,13 @@ if __name__ == "__main__":
                         with open(name_file, 'rb') as f:
                             for line in f:
                                 s.sendall(line)
-                            
+
+                    elif is_command(msg,'/quit'):
+                        s.close()
+                        logs.close()
+                        os.system('clear')
+                        print('\n\nGoodbye!\n')
+                        sys.exit(0)       
                    
                     elif is_command(msg,'/help'):
                         #To print help msg 

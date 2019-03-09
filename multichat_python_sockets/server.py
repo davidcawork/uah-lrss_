@@ -39,8 +39,8 @@ if __name__ == "__main__":
                                     if sock_to_send is not sock_to_rcv and sock_to_send is not s :
                                         sock_to_send.sendall(data)
                                         
-
-
                             else:
-                                s.close()
+                                sock_to_rcv.close()
+                                sockets_rd.remove(sock_to_rcv)
+            
 
