@@ -120,11 +120,12 @@ if __name__ == "__main__":
                                 print_msgs(msg_history)
                         elif data[1] == 'file':
                             now = datetime.datetime.now()
-                            print('['+now.strftime('%H:%M:%S')+'] Downloading '+data[0]+' file from '+data[2]+' ('+str(data[3]*CHUNCK_SIZE)+' bytes)')
+                            print('['+now.strftime('%H:%M:%S')+'] Downloading '+data[0]+' file from '+data[2]+' ('+str(data[3])+' bytes)')
                             time.sleep(2)
                             with open(data[2], "wb") as f:        
                                 chunk = s.recv(CHUNCK_SIZE)
-                                for chunck in range(0,data[3]):
+                                while os.path.getsize(os.getcwd()+'/'+data[2]) is not data[3] :
+                                #for chunck in range(0,data[3]):
                                     f.write(chunk)
                                     chunk = s.recv(CHUNCK_SIZE)
                             now = datetime.datetime.now()
@@ -139,8 +140,8 @@ if __name__ == "__main__":
 
                     if is_command(msg,'/file'):  
                         name_file = file_split(msg)
-                        chuncks = math.ceil(float(os.path.getsize(os.getcwd()+'/'+name_file))/CHUNCK_SIZE)
-                        s.sendall(pickle.dumps([name,'file',name_file,chuncks]))
+                        #chuncks = math.ceil(float(os.path.getsize(os.getcwd()+'/'+name_file))/CHUNCK_SIZE)
+                        s.sendall(pickle.dumps([name,'file',name_file,os.path.getsize(os.getcwd()+'/'+name_file)]))
                         now = datetime.datetime.now()
                         print('['+now.strftime('%H:%M:%S')+'] Sharing '+name_file+' with all the users of the multichat...')
                         time.sleep(2)
