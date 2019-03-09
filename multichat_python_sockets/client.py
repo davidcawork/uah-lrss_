@@ -141,7 +141,7 @@ if __name__ == "__main__":
                     if is_command(msg,'/file'):  
                         name_file = file_split(msg)
                         chuncks = math.ceil(float(os.path.getsize(os.getcwd()+'/'+name_file))/CHUNCK_SIZE)
-                        s.sendall(pickle.dumps([name,'file',chuncks]))
+                        s.sendall(pickle.dumps([name,'file',name_file,chuncks]))
                         now = datetime.datetime.now()
                         print('['+now.strftime('%H:%M:%S')+'] Sharing '+name_file+' with all the users of the multichat...')
                         time.sleep(2)
