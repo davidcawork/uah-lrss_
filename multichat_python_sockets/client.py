@@ -120,13 +120,13 @@ if __name__ == "__main__":
                                 print_msgs(msg_history)
                         elif data[1] == 'file':
                             now = datetime.datetime.now()
-                            print('['+now.strftime('%H:%M:%S')+'] Downloading '+data[0]+' file from '+data[2]+'('+str(data[3]*CHUNCK_SIZE)+' bytes)')
+                            print('['+now.strftime('%H:%M:%S')+'] Downloading '+data[0]+' file from '+data[2]+' ('+str(data[3]*CHUNCK_SIZE)+' bytes)')
                             time.sleep(2)
                             with open(data[2], "wb") as f:        
-                                chunk = s.recv(CHUNK_SIZE)
+                                chunk = s.recv(CHUNCK_SIZE)
                                 while chunk:
                                     f.write(chunk)
-                                    chunk = s.recv(CHUNK_SIZE)
+                                    chunk = s.recv(CHUNCK_SIZE)
                     else:
                         logs.close()
                         s.close()
@@ -139,6 +139,7 @@ if __name__ == "__main__":
                         name_file = file_split(msg)
                         chuncks = math.ceil(float(os.path.getsize(os.getcwd()+'/'+name_file))/CHUNCK_SIZE)
                         s.sendall(pickle.dumps([name,'file',name_file,chuncks]))
+                        print('['+now.strftime('%H:%M:%S')+'] Sharing '+name_file+' with all the users of the multichat...')
                         time.sleep(2)
                         with open(name_file, 'rb') as f:
                             s.sendfile(f)
