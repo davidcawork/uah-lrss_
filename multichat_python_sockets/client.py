@@ -6,10 +6,12 @@ import select
 import pickle
 import signal
 import datetime
+import math
+import time 
 
 #Global vars
 MAX_MSG_SAVED = 20 
-
+CHUNCK_SIZE = 512
 #Handler CTRL+C - Close connection with server
 def signal_handler(sig, frame):
     logs.close()
@@ -51,7 +53,7 @@ def print_help(name):
     print('Hi '+name+' !\n\n')
     print('These are the commands that you can use:\n')
     print('\t/help\tTo consult the commands and guides for using the chat')
-    print('\t/file\tto send a file to all multichat users, use:\n\t\t /file <path_to_file> <name_of_the_file>')
+    print('\t/file\tTo send a file to all multichat users\n\t\tUse: /file <name_of_the_file>')
     print('\n\nFor more help you can check: https://github.com/davidcawork\n\n')
     input("Press Enter to continue...")
     os.system('clear')
@@ -68,6 +70,11 @@ def add_to_msgHistory(msg_history,msg):
         msg_history.pop(0)
     
     msg_history.append(msg)
+
+def file_split(line):
+
+    return (line.split(' '))[1]
+
 
 if __name__ == "__main__":
 
@@ -112,7 +119,14 @@ if __name__ == "__main__":
                                 add_to_msgHistory(msg_history,'['+now.strftime('%H:%M:%S')+'] '+data[0]+': '+data[2])
                                 print_msgs(msg_history)
                         elif data[1] == 'file':
-                            print('Handle a file') 
+                            now = datetime.datetime.now()
+                            print('['+now.strftime('%H:%M:%S')+'] Downloading '+data[0]+' file from '+data[2]+'('+str(data[3]*CHUNCK_SIZE)+' bytes)')
+                            time.sleep(2)
+                            with open(data[2], "wb") as f:        
+                                chunk = s.recv(CHUNK_SIZE)
+                                while chunk:
+                                    f.write(chunk)
+                                    chunk = s.recv(CHUNK_SIZE)
                     else:
                         logs.close()
                         s.close()
@@ -122,12 +136,17 @@ if __name__ == "__main__":
                     msg = input()
 
                     if is_command(msg,'/file'):  
-                        print('XDDD')
+                        name_file = file_split(msg)
+                        chuncks = math.ceil(float(os.path.getsize(os.getcwd()+'/'+name_file))/CHUNCK_SIZE)
+                        s.sendall(pickle.dumps([name,'file',name_file,chuncks]))
+                        time.sleep(2)
+                        with open(name_file, 'rb') as f:
+                            s.sendfile(f)
 
                     elif is_command(msg,'/help'):
                         #To print help msg 
                         print_help(name)
-
+                        
                     else:
                         #To send a msg
                         s.sendall(pickle.dumps([name,'msg',msg]))
