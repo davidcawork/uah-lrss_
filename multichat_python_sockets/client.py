@@ -1,5 +1,5 @@
 #/usr/bin/env python3
-import socket
+import socket           
 import sys
 import os
 import select
@@ -68,9 +68,11 @@ def signal_handler(sig, frame):
     print('\n\nGoodbye!\n')
     sys.exit(0)
 
+#to get cmd written
 def is_command(msg, str_cmd):
     return msg.count(str_cmd)
 
+#To print /help cmd
 def print_help(name):
     sys.stdout.flush()
     os.system('clear')
@@ -78,18 +80,22 @@ def print_help(name):
     print('These are the commands that you can use:\n')
     print('\t/help\tTo consult the commands and guides for using the chat')
     print('\t/file\tTo send a file to all multichat users\n\t\tUse: /file <name_of_the_file>')
-    print('\t/quit\tTo exit the multichat')    
+    print('\t/quit\tTo exit the multichat')
+    print('\t/timeup\tTo get the time you have connected in the chat')
+    print('\t/stats\tTo get statistics about your activity in the chat')        
     print('\n\nFor more help you can check: https://github.com/davidcawork\n\n')
     
     input("Press Enter to continue...")
     os.system('clear')
 
+#To print msg_history
 def print_msgs(msg_history):
     sys.stdout.flush()
     os.system('clear')
     for msg in msg_history:
         print(msg)
 
+#To manege msg's
 def add_to_msgHistory(msg_history,msg):
 
     if len(msg_history) == MAX_MSG_SAVED:
@@ -97,9 +103,37 @@ def add_to_msgHistory(msg_history,msg):
     
     msg_history.append(msg)
 
+#To get the file name
 def file_split(line):
 
     return (line.split(' '))[1]
+
+#To get time up in the multichat
+def timeup_cmd(name,time_init):
+    os.system('clear')
+    print('Hi '+name+' !\n\n')
+    time_b = datetime.datetime.now()
+    print('You have '+str(time_b - time_init)+' time in the chat n.n\n\n\n')
+    input("Press Enter to continue...")
+    os.system('clear')
+
+#To get our stats :)
+def stats_cmd(name,msg_sent,msg_rcv,files_sent,files_rcv,cmd_used,time_init,len_msg_history):
+
+    os.system('clear')
+    print('Hi '+name+' !\n\n')
+    time_b = datetime.datetime.now()
+    print('Your stats in the multichat:\n')
+    print('1.\t Msg sent     : '+str(msg_sent))
+    print('2.\t Msg rcv      : '+str(msg_rcv))
+    print('3.\t Files sent   : '+str(files_sent))
+    print('4.\t Files rcv    : '+str(files_rcv))
+    print('5.\t Commands used: '+str(cmd_used))
+    print('6.\t msg_History  : '+str(len_msg_history))
+    print('7.\t Time up      : '+str(time_b -time_init)+'\n\n')  
+    
+    input("Press Enter to continue...")
+    os.system('clear')
 
 
 if __name__ == "__main__":
@@ -112,6 +146,15 @@ if __name__ == "__main__":
         #Let's to prepare the CTRL + C signal to handle it and be able  to close the connection
         signal.signal(signal.SIGINT, signal_handler)
 
+        #Track time up in the multichat 
+        time_init = datetime.datetime.now()
+
+        #To track stats
+        msg_sent = 0
+        msg_rcv = 0
+        files_sent = 0
+        files_rcv = 0
+        cmd_used = 0
 
         #Track all msg
         msg_history = []
@@ -129,11 +172,13 @@ if __name__ == "__main__":
                         
                         if data[1] == 'msg':
                             if data[0] is not name:
+                                msg_rcv +=1
                                 now = datetime.datetime.now()
                                 add_to_msgHistory(msg_history,'['+now.strftime('%H:%M:%S')+'] '+data[0]+': '+data[2])
                                 print_msgs(msg_history)
                                 logs.write('['+now.strftime('%H:%M:%S')+'] '+data[0]+': '+data[2])
                         elif data[1] == 'file':
+                            files_rcv += 1
                             now = datetime.datetime.now()
                             print('['+now.strftime('%H:%M:%S')+'] Downloading '+data[2]+' file from '+data[0]+' ('+str(data[3])+' bytes)')
                             #time.sleep(2)
@@ -153,10 +198,14 @@ if __name__ == "__main__":
                         s.close()
                         print('Goodbye!\n')
 
+                # Stdin event
                 elif event == sys.stdin:
                     msg = input()
 
-                    if is_command(msg,'/file'):  
+                    if is_command(msg,'/file'):
+                        #To send a file  
+                        files_sent +=1
+                        cmd_used +=1
                         name_file = file_split(msg)
                         chuncks = math.ceil(float(os.path.getsize(os.getcwd()+'/'+name_file))/CHUNCK_SIZE)
                         s.sendall(pickle.dumps([name,'file',name_file,chuncks]))
@@ -169,6 +218,7 @@ if __name__ == "__main__":
                                 s.sendall(line)
 
                     elif is_command(msg,'/quit'):
+                        #To quit the multichat
                         s.close()
                         logs.close()
                         os.system('clear')
@@ -176,11 +226,25 @@ if __name__ == "__main__":
                         sys.exit(0)       
                    
                     elif is_command(msg,'/help'):
-                        #To print help msg 
+                        #To print help msg
+                        cmd_used +=1 
                         print_help(name)
-                        
+                        print_msgs(msg_history)
+
+                    elif is_command(msg,'/timeup'):
+                        #To print time up in the multichat 
+                        cmd_used +=1
+                        timeup_cmd(name,time_init)
+                        print_msgs(msg_history)
+
+                    elif is_command(msg,'/stats'):
+                        #To print our stats in the multichat
+                        cmd_used +=1
+                        stats_cmd(name,msg_sent,msg_rcv,files_sent,files_rcv,cmd_used,time_init,len(msg_history))
+                        print_msgs(msg_history)
                     else:
                         #To send a msg
+                        msg_sent+=1
                         s.sendall(pickle.dumps([name,'msg',msg]))
                         now = datetime.datetime.now()
                         add_to_msgHistory(msg_history,'['+now.strftime('%H:%M:%S')+'] Tu: '+msg)
