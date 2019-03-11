@@ -10,11 +10,11 @@ import math
 import time 
 
 
-#Note: We declare here the server descriptor and the log file to be "global variables"
+#Note: We declare here the server descriptor, the log file, our server descriptor to be "global variables"
 #      and that these can be accessed by the CTRL + C handler and the connection 
 #      can be closed correctly(the log file too). This can be done with POO in a cleaner way
 #      but I do not have enough time to do it, it is as future improvement for the holidays :) ,
-#      let's say that this is the version: ChatPy v1.0
+#      let's say that this is the version: P2PChatPy v1.0
 #
 #   For more info: github.com/davidcawork
 
@@ -167,6 +167,7 @@ def stats_cmd(name,msg_sent,msg_rcv,cmd_used,time_init,len_msg_history):
     input("Press Enter to continue...")
     os.system('clear')
 
+#To print peer table
 def print_peer_table(name, peer_list):
     os.system('clear')
     print('Hi '+name+' !\n\n')
@@ -176,6 +177,7 @@ def print_peer_table(name, peer_list):
     input("\n\n\nPress Enter to continue...")
     os.system('clear')
 
+#To print active connections table
 def print_conn_table(name, active_conn):
     os.system('clear')
     print('Hi '+name+' !\n\n')
@@ -185,12 +187,14 @@ def print_conn_table(name, active_conn):
     input("\n\n\nPress Enter to continue...")
     os.system('clear')
 
+#To get some peer elemnet from peer_list
 def get_peer_element(peer_list, my_peer_id):
 
     for peer in peer_list:
         if peer[3] is my_peer_id:
             return peer
 
+#To get id_peer from some command
 def getPeerId(msg):
 
     try:
@@ -198,6 +202,7 @@ def getPeerId(msg):
     except:
         return 0
 
+#To check  if one id_peer is already connected
 def is_already_Connected(active_conn, id_peer):
 
     for conn in active_conn:
@@ -206,12 +211,14 @@ def is_already_Connected(active_conn, id_peer):
 
     return False
 
+#To get socket descriptor from active connections
 def get_sockpeer_element(active_conn_sock, id_to_find):
 
     for conn in active_conn_sock:
         if conn[0][3] is id_to_find:
             return conn[1]
 
+#To get msg from /msg command
 def get_msg_to_send(msg):
 
     return msg.split('@')[1]
@@ -258,6 +265,8 @@ if __name__ == "__main__":
             events_rd,events_wr,events_excp = select.select(ways_to_rd,[],[])
 
             for event in events_rd:
+
+                #P2P server communication protocol
                 if event is server:
                     data = pickle.loads(server.recv(1024))
                     if data:
@@ -297,7 +306,8 @@ if __name__ == "__main__":
                         server.close()
                         ours_server.close()
                         print('Goodbye!\n')
-
+                
+                #Our server, to accept incoming connections from peers
                 elif event is ours_server:
                     #Accept user to chat with him
                     conn, addr = ours_server.accept()
@@ -432,6 +442,7 @@ if __name__ == "__main__":
                         stats_cmd(name,msg_sent,msg_rcv,cmd_used,time_init,len(msg_history))
                         print_msgs(msg_history)
                     else:
+                        #To support non cmd data
                         now = datetime.datetime.now()
                         add_to_msgHistory(msg_history,'['+now.strftime('%H:%M:%S')+'] You: '+msg)
                         print_msgs(msg_history)
@@ -441,11 +452,13 @@ if __name__ == "__main__":
                 else:
 
                     for peer in ways_to_rd:
+
+                        #We only want to check our peers
                         if peer is not server and peer is not ours_server and peer is not sys.stdin:
                             data= pickle.loads(peer.recv(1024))
                             if data:
                                 if data[0] == P2P_CHAT_PY_PROTOCOL_CONN:
-                                    
+                                    #To manage incoming connection
                                     sock_and_conn = []
                                     active_conn.append(data[1])
                                     sock_and_conn.append(data[1])
@@ -458,7 +471,7 @@ if __name__ == "__main__":
                                     proto_msg_rcv += 1
 
                                 elif data[0] == P2P_CHAT_PY_PROTOCOL_CONN_ACK:
-
+                                    #To handle conn ack
                                     sock_and_conn = []
                                     active_conn.append(data[1])
                                     sock_and_conn.append(data[1])
@@ -471,7 +484,7 @@ if __name__ == "__main__":
                                     proto_msg_rcv += 1
                                 
                                 elif data[0] == P2P_CHAT_PY_PROTOCOL_DIS:
-
+                                    #To manage incoming disconnection
                                     sock_and_conn_aux = []
                                     active_conn.remove(data[1])
                                     sock_and_conn_aux.append(data[1])
@@ -485,7 +498,7 @@ if __name__ == "__main__":
                                     proto_msg_rcv += 1
 
                                 elif data[0] == P2P_CHAT_PY_PROTOCOL_DIS_ACK:
-
+                                    #To handle disconnection ackno.
                                     sock_and_conn_aux = []
                                     active_conn.remove(data[1])
                                     sock_and_conn_aux.append(data[1])
@@ -500,7 +513,7 @@ if __name__ == "__main__":
                                     proto_msg_rcv += 1
 
                                 elif data[0] == P2P_CHAT_PY_PROTOCOL_MSG:
-                                    
+                                    #To handle incoming msg, just print it and log it
                                     now = datetime.datetime.now()
                                     msg_history.append('['+now.strftime('%H:%M:%S')+'] '+data[1][0]+'@'+data[1][2]+' > '+data[2])
                                     logs.write('['+now.strftime('%H:%M:%S')+'] '+data[1][0]+'@'+data[1][2]+' > '+data[2]+'\n')
@@ -508,6 +521,7 @@ if __name__ == "__main__":
                                     proto_msg_rcv += 1
                                     msg_rcv += 1
                             else:
+                                #If no data
                                 ways_to_rd.remove(peer)
                                 peer.close()
                                 

@@ -6,13 +6,18 @@ import pickle
 import select
 import os
 
-#Global Vars
+#PROTOCOL MSGs
 P2P_CHAT_PY_PROTOCOL_HI = 'ChatPy_Hi'
 P2P_CHAT_PY_PROTOCOL_HI_ACK = 'ChatPy_Hi_Ack'
 P2P_CHAT_PY_PROTOCOL_BYE = 'ChatPy_Bye'
 P2P_CHAT_PY_PROTOCOL_BYE_ACK = 'ChatPy_Bye_Ack'
 P2P_CHAT_PY_PROTOCOL_UPDATE = 'ChatPy_Update'
 P2P_CHAT_PY_PROTOCOL_UPDATE_ACK = 'ChatPy_Update_Ack'
+P2P_CHAT_PY_PROTOCOL_CONN = 'ChatPy_Conn'
+P2P_CHAT_PY_PROTOCOL_CONN_ACK = 'ChatPy_Conn_Ack'
+P2P_CHAT_PY_PROTOCOL_DIS = 'ChatPy_Dis'
+P2P_CHAT_PY_PROTOCOL_DIS_ACK = 'ChatPy_Dis_Ack'
+P2P_CHAT_PY_PROTOCOL_MSG = 'ChatPy_Msg'
 
 
 #To print all clients connected
