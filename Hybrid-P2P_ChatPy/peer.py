@@ -89,7 +89,10 @@ logs = create_logs(name,current_time)
 
 #Handler CTRL+C - Close connection with server
 def signal_handler(sig, frame):
-    server.sendall(pickle.dumps([P2P_CHAT_PY_PROTOCOL_BYE,[name,our_port]]))
+    server.sendall(pickle.dumps([P2P_CHAT_PY_PROTOCOL_BYE,[name,our_port],my_id_peer]))
+    for conn in active_conn:
+        (get_sockpeer_element(active_conn_sock,conn[3])).sendall(pickle.dumps([P2P_CHAT_PY_PROTOCOL_DIS,get_peer_element(peer_list,my_id_peer)])) 
+
     time.sleep(1)
     logs.close()
     server.close()
@@ -112,7 +115,12 @@ def print_help(name):
     print('\t/timeup\t\tTo get the time you have connected in the chat')
     print('\t/stats\t\tTo get statistics about your activity in the chat')
     print('\t/update\t\tTo update your peer list')
-    print('\t/showpeers\tTo show your peers table')        
+    print('\t/showpeers\tTo show your peers table')
+    print('\t/showconn\tTo show your current active connections')
+    print('\t/conn [id]\tTo connect with your peers')
+    print('\t/dis  [id]\tTo disconnect with your peers')
+    print('\t/msg\t\tTo send a msg to some connected peer')
+    print('\t\t\tUsage: /msg [id] @messsage\n\n\t\t\tExample: /msg 1 @Hi everyone! :)')     
     print('\n\nFor more help you can check: https://github.com/davidcawork\n\n')
     
     input("Press Enter to continue...")
@@ -164,7 +172,7 @@ def print_peer_table(name, peer_list):
     print('Hi '+name+' !\n\n')
     print('\t\t-- Peer table --\n')
     for peer in peer_list:
-        print('+ Name: '+peer[0]+' | Ip: '+str(peer[1])+' | Port: '+peer[2]+' | Id_peer: '+str(peer[3]))
+        print('+ Name: '+peer[0]+'\t | Port: '+str(peer[1])+' | Ip: '+peer[2]+' | Id_peer: '+str(peer[3]))
     input("\n\n\nPress Enter to continue...")
     os.system('clear')
 
@@ -173,19 +181,22 @@ def print_conn_table(name, active_conn):
     print('Hi '+name+' !\n\n')
     print('\t\t-- Active connections table --\n')
     for peer in active_conn:
-        print('+ Name: '+peer[0]+' | Ip: '+str(peer[1])+' | Port: '+peer[2]+' | Id_peer: '+str(peer[3]))
+        print('+ Name: '+peer[0]+'\t | Port: '+str(peer[1])+' | Ip: '+peer[2]+' | Id_peer: '+str(peer[3]))
     input("\n\n\nPress Enter to continue...")
     os.system('clear')
 
 def get_peer_element(peer_list, my_peer_id):
 
     for peer in peer_list:
-        if peer[3] is my_id_peer:
+        if peer[3] is my_peer_id:
             return peer
 
 def getPeerId(msg):
 
-    return int(msg.split(' ')[1])
+    try:
+        return int(msg.split(' ')[1])
+    except:
+        return 0
 
 def is_already_Connected(active_conn, id_peer):
 
@@ -194,6 +205,16 @@ def is_already_Connected(active_conn, id_peer):
             return True
 
     return False
+
+def get_sockpeer_element(active_conn_sock, id_to_find):
+
+    for conn in active_conn_sock:
+        if conn[0][3] is id_to_find:
+            return conn[1]
+
+def get_msg_to_send(msg):
+
+    return msg.split('@')[1]
 
 if __name__ == "__main__":
 
@@ -224,6 +245,7 @@ if __name__ == "__main__":
 
         #Active_conn
         active_conn = []
+        active_conn_sock = []
 
         #Say Hi to p2p2 server
         print('Connecting to p2p server...')
@@ -289,7 +311,10 @@ if __name__ == "__main__":
                     if is_command(msg,'/quit'):
                         #To quit the multichat
                         os.system('clear')
-                        server.sendall(pickle.dumps([P2P_CHAT_PY_PROTOCOL_BYE,[name,our_port],my_id_peer]))  
+                        server.sendall(pickle.dumps([P2P_CHAT_PY_PROTOCOL_BYE,[name,our_port],my_id_peer]))
+
+                        for conn in active_conn:
+                            (get_sockpeer_element(active_conn_sock,conn[3])).sendall(pickle.dumps([P2P_CHAT_PY_PROTOCOL_DIS,get_peer_element(peer_list,my_id_peer)])) 
 
                     elif is_command(msg, '/update'):
                         #Request update to p2p2 server
@@ -311,7 +336,7 @@ if __name__ == "__main__":
                         proto_msg_sent += 1
 
                         id_to_conn = getPeerId(msg)
-                        if not is_already_Connected(id_to_conn):
+                        if not is_already_Connected(active_conn,id_to_conn) and id_to_conn is not 0 :
 
                             try:
                                 peer_to_conn = get_peer_element(peer_list, id_to_conn)
@@ -322,9 +347,10 @@ if __name__ == "__main__":
                             
                             aux_peer = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                             aux_peer.connect((peer_to_conn[2],peer_to_conn[1]))
-                            
+                            ways_to_rd.append(aux_peer)
+
                             time.sleep(1)
-                            aux_peer.sendall([P2P_CHAT_PY_PROTOCOL_CONN,get_peer_element(peer_list,my_id_peer))
+                            aux_peer.sendall(pickle.dumps([P2P_CHAT_PY_PROTOCOL_CONN,get_peer_element(peer_list,my_id_peer)]))
         
                         else:
                             msg_history.append('['+now.strftime('%H:%M:%S')+'] Id_peer: '+str(peer_to_conn[3])+' already in use...')
@@ -334,15 +360,51 @@ if __name__ == "__main__":
                         #To disconnect with someone
                         cmd_used +=1 
                         proto_msg_sent += 1
+                        peer_to_dis = []
 
+                        id_to_dis = getPeerId(msg)
+                        if is_already_Connected(active_conn,id_to_dis):
 
+                            try:
+                                aux_peer = get_sockpeer_element(active_conn_sock, id_to_dis)
+                                peer_to_dis = get_peer_element(active_conn, id_to_dis)
+                            except:
+                                msg_history.append('['+now.strftime('%H:%M:%S')+'] Id_peer: '+peer_to_dis[0]+' not found ...')
+
+                            msg_history.append('['+now.strftime('%H:%M:%S')+'] Disconnecting with '+peer_to_dis[0]+' ...')
+                            
+                            time.sleep(1)
+                            aux_peer.sendall(pickle.dumps([P2P_CHAT_PY_PROTOCOL_DIS,get_peer_element(peer_list,my_id_peer)]))
+        
+                        else:
+                            msg_history.append('['+now.strftime('%H:%M:%S')+'] Id_peer: '+str(id_to_dis)+' is not in active connections ...')
                         print_msgs(msg_history)
+
 
                     elif is_command(msg,'/msg'):
                         #To communicate with some peers, or single one
-                        # /msg [id1,id2] @msg
+                        # /msg id @msg
                         cmd_used +=1 
                         proto_msg_sent += 1
+                        msg_sent += 1
+
+                        now = datetime.datetime.now()
+                        msg_to_send = get_msg_to_send(msg)
+
+                        try:
+                            id_peer_to_send = getPeerId(msg)
+                            if is_already_Connected(active_conn,id_peer_to_send):
+                                peer_to_send = get_sockpeer_element(active_conn_sock, id_peer_to_send)
+
+                                peer_to_send.sendall(pickle.dumps([P2P_CHAT_PY_PROTOCOL_MSG,get_peer_element(peer_list,my_id_peer),msg_to_send]))
+                            
+                                msg_history.append('['+now.strftime('%H:%M:%S')+'] You@'+ get_peer_element(peer_list,my_id_peer)[2] +' > '+msg_to_send)
+                                logs.write('['+now.strftime('%H:%M:%S')+'] You@'+ get_peer_element(peer_list,my_id_peer)[2] +' > '+msg_to_send+'\n')
+                            else:
+                                msg_history.append('['+now.strftime('%H:%M:%S')+'] Id_peer: '+peer_to_dis[0]+' not found ...')
+                        except:
+                           msg_history.append('['+now.strftime('%H:%M:%S')+'] Invalid id_peer ...') 
+
 
                         print_msgs(msg_history)
 
@@ -371,9 +433,9 @@ if __name__ == "__main__":
                         print_msgs(msg_history)
                     else:
                         now = datetime.datetime.now()
-                        add_to_msgHistory(msg_history,'['+now.strftime('%H:%M:%S')+'] Tu: '+msg)
+                        add_to_msgHistory(msg_history,'['+now.strftime('%H:%M:%S')+'] You: '+msg)
                         print_msgs(msg_history)
-                        logs.write('['+now.strftime('%H:%M:%S')+'] Tu: '+msg+'\n')
+                        logs.write('['+now.strftime('%H:%M:%S')+'] You: '+msg+'\n')
                 
                 #To handle events from peers
                 else:
@@ -383,20 +445,72 @@ if __name__ == "__main__":
                             data= pickle.loads(peer.recv(1024))
                             if data:
                                 if data[0] == P2P_CHAT_PY_PROTOCOL_CONN:
-                                    active_conn.append(data[1])
-                                    peer.sendall(pickle.dumps(P2P_CHAT_PY_PROTOCOL_CONN_ACK,get_peer_element(peer_list,my_id_peer)))
                                     
+                                    sock_and_conn = []
+                                    active_conn.append(data[1])
+                                    sock_and_conn.append(data[1])
+                                    sock_and_conn.append(peer)
+                                    active_conn_sock.append(sock_and_conn)
+                                    peer.sendall(pickle.dumps([P2P_CHAT_PY_PROTOCOL_CONN_ACK,get_peer_element(peer_list,my_id_peer)]))
+                                    now = datetime.datetime.now()
+                                    add_to_msgHistory(msg_history,'['+now.strftime('%H:%M:%S')+'] '+data[1][0]+' has connected with you ...')
+                                    print_msgs(msg_history)
+                                    proto_msg_rcv += 1
+
                                 elif data[0] == P2P_CHAT_PY_PROTOCOL_CONN_ACK:
 
+                                    sock_and_conn = []
+                                    active_conn.append(data[1])
+                                    sock_and_conn.append(data[1])
+                                    sock_and_conn.append(peer)
+                                    active_conn_sock.append(sock_and_conn)
+                                    now = datetime.datetime.now()
+                                    add_to_msgHistory(msg_history,'['+now.strftime('%H:%M:%S')+'] Connection accepted')
+                                    time.sleep(1)
+                                    print_msgs(msg_history)
+                                    proto_msg_rcv += 1
+                                
                                 elif data[0] == P2P_CHAT_PY_PROTOCOL_DIS:
+
+                                    sock_and_conn_aux = []
+                                    active_conn.remove(data[1])
+                                    sock_and_conn_aux.append(data[1])
+                                    sock_and_conn_aux.append(peer)
+                                    active_conn_sock.remove(sock_and_conn_aux)
+                                    peer.sendall(pickle.dumps([P2P_CHAT_PY_PROTOCOL_DIS_ACK,get_peer_element(peer_list,my_id_peer)]))
+                                    ways_to_rd.remove(peer)
+                                    now = datetime.datetime.now()
+                                    msg_history.append('['+now.strftime('%H:%M:%S')+'] '+data[1][0]+' is no longer connected to you ...')
+                                    print_msgs(msg_history)
+                                    proto_msg_rcv += 1
 
                                 elif data[0] == P2P_CHAT_PY_PROTOCOL_DIS_ACK:
 
-                                elif data[0] == P2P_CHAT_PY_PROTOCOL_MSG:
+                                    sock_and_conn_aux = []
+                                    active_conn.remove(data[1])
+                                    sock_and_conn_aux.append(data[1])
+                                    sock_and_conn_aux.append(peer)
+                                    active_conn_sock.remove(sock_and_conn_aux)
+                                    ways_to_rd.remove(peer)
+                                    peer.close()
+                                    now = datetime.datetime.now()
+                                    msg_history.append('['+now.strftime('%H:%M:%S')+'] Disconnected from '+data[1][0]+' ...')
+                                    time.sleep(1)
+                                    print_msgs(msg_history)
+                                    proto_msg_rcv += 1
 
+                                elif data[0] == P2P_CHAT_PY_PROTOCOL_MSG:
+                                    
+                                    now = datetime.datetime.now()
+                                    msg_history.append('['+now.strftime('%H:%M:%S')+'] '+data[1][0]+'@'+data[1][2]+' > '+data[2])
+                                    logs.write('['+now.strftime('%H:%M:%S')+'] '+data[1][0]+'@'+data[1][2]+' > '+data[2]+'\n')
+                                    print_msgs(msg_history)
+                                    proto_msg_rcv += 1
+                                    msg_rcv += 1
                             else:
-                                peer.close()
                                 ways_to_rd.remove(peer)
+                                peer.close()
+                                
                     
 
 
