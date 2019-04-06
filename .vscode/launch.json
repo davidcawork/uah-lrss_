@@ -9,10 +9,10 @@
             "name": "Python: Terminal (integrated)",
             "type": "python",
             "request": "launch",
-            "cwd": "${workspaceFolder}/Hybrid-P2P_ChatPy/",
+            "cwd": "${workspaceFolder}/ProxPy/",
             "program": "${file}",
             "console": "integratedTerminal",
-            "args":["david_dbg","7001","localhost","5002"]
+            "args":["5001","True"]
             //"args":["5000"]
         },
         {

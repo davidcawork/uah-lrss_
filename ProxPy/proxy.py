@@ -3,7 +3,8 @@ import socket
 import sys
 import os
 import select
-
+import time
+import datetime
 
 #Note: 
 #
@@ -13,51 +14,89 @@ import select
 
 #Global vars
 MSG_PROXPY_INACTIVE = '[ProxPy] Proxy inactive ...'
+ERROR_TO_RCV_FROM_NAV = '[ProxPy] Error to recover the request from: '
 
+
+
+
+
+
+#To get our socket TCP, where we will hear connections from web navigators
+def get_our_socket(port):
+
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.setblocking(0)
+    s.bind(('',port))
+    s.listen(5)
+    return s
+
+#Aux func to know if one item is in one list
+def is_in_the_list(list_, element):
+
+    for items in list_:
+        if list_.count(element):
+            return True
+
+    return False
+
+#To get ProxPy str time format
+def get_str_time_ProxPy():
+    return ('['+(datetime.datetime.now()).strftime('%H:%M:%S')+'] ')
+
+#To get the Host from request
+def get_host_from_request(data):
+
+    for lines in  data.split('\r\n'):
+        if line.count('Host: '):
+            return line.split('Host: ')[0]
+
+#To get the Resource from request
+def get_resource_from_request(data):
+
+    for lines in  data.split('\r\n'):
+        if line.count('GET '):
+            return line.split('Host: ')[0]
 
 
 if __name__ == "__main__":
+
     #Check argv's
-    if len(sys.argv) < 2:
+    if len(sys.argv) != 3:
 	    print('Error: usage: ./' + sys.argv[0] + ' <Port>')
 	    exit(0)
     
     else:
 
-        #Vars
-        pet = b''
+        # --- Vars ----
         proxy_port = int(sys.argv[1])
         proxy_timeout = 300.0
-	
-	    #Prepare our socket
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.setblocking(0)
-        s.bind(('',proxy_port))
-        s.listen(5)
+        debug_mode = bool(sys.argv[2])
 
-        # To prepare csic request
-        host=socket.gethostbyname('www.csic.es')
-        request = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        request.connect((host,80))
-        #request.sendall(b'GET / HTTP/1.1\r\nHost: www.csic.es\r\nUser-Agent: Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:66.0) Gecko/20100101 Firefox/66.0\r\nAccept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8\r\nAccept-Language: en-US,en;q=0.5\r\nAccept-Encoding: gzip, deflate\r\nConnection: keep-alive\r\nUpgrade-Insecure-Requests: 1\r\n\r\n')
-        
-        #pet = request.recv(1000000000)
-        #pet += request.recv(1000000000)
-        #pet += request.recv(1000000000)
-        #pet += request.recv(1000000000)
-        #pet += request.recv(1000000000)
-        #pet += request.recv(1000000000)
-        #pet += request.recv(1000000000)
-        #pet += request.recv(1000000000)
-        #print(str(pet))
+	    #Prepare our TCP socket where we will hear connections from web navigators
+        our_proxy_socket = get_our_socket(proxy_port)
+
+        #Prepare our udp socket where w'ill log every single pet.
+        # 
+
+
         #Sockets to read
-        sockets_rd = [s,request]
+        sockets_rd = [our_proxy_socket]
 
+        #To save 
+        #Input connections
+        input_conn = []
+
+        #Output connections 
+        output_conn = []
+
+        
+        # We can exit by CTRL+C signal
         while True:
             try:
+
 	    		# The optional timeout argument specifies a time-out as a floating point number in seconds.
                 events_rd,events_wr,events_excp = select.select( sockets_rd,[],[])
-            
+
             except KeyboardInterrupt:
                 print('\n\n\nShutdown ProxPy....')
                 for sock in sockets_rd:
@@ -65,37 +104,44 @@ if __name__ == "__main__":
                 sys.exit(0)
 
             for event in events_rd:
-                if event == s:
+
+                if event == our_proxy_socket:
+
                 	#Accept input conn from web navigator
-                    conn, addr = s.accept()
+                    conn, addr = our_proxy_socket.accept()
                     conn.setblocking(0)
                     sockets_rd.append(conn)
+                    input_conn.append(conn)
+
                 else:
             	    #Handle other conn
                     for sock_to_rcv in sockets_rd:
-                        if sock_to_rcv != s and sock_to_rcv is event:
-                            if sock_to_rcv != request:
+                        #To manage request from web nav. connections 
+                        if sock_to_rcv != our_proxy_socket and sock_to_rcv is event and is_in_the_list(input_conn,sock_to_rcv):
+                
+                            #Recover request from Web nav
+                            try:
                                 data = sock_to_rcv.recv(1024*1000)
-                                print("{}".format(data.decode('utf-8')))
-                                if data:
-                                    #print('ENviando datossss......')
-                                    request.sendall(data)
-                                else:
-                                    sock_to_rcv.close()
-                                    sockets_rd.remove(sock_to_rcv)
+                                if debug_mode:
+                                    print("{}".format(data.decode('utf-8')))
+                            except:
+                                print( get_str_time_ProxPy() + ERROR_TO_RCV_FROM_NAV + sock_to_rcv.getsockname()[0]+':'+sock_to_rcv.getsockname()[1])
+                            
+                            if data:
+                                #Parse the request
+                                host = get_host_from_request(str(data))
+                                content = get_resource_from_request(str(data))
+
+                                # 
                             else:
-                                try:
-                                    sockets_rd[2].sendall(request.recv(1024*1000))
-                                except:
-                                    print("Error al hacer reply :) \n\n\n ")
-                                
-                                    
-                                
-                                			
-                
-                
-            
+                                sock_to_rcv.close()
+                                sockets_rd.remove(sock_to_rcv)
+                                input_conn.remove(sock_to_rcv)
 
 
+                        elif sock_to_rcv != our_proxy_socket and sock_to_rcv is event and is_in_the_list(output_conn,sock_to_rcv):
 
-	    
+                            try:
+                                sockets_rd[2].sendall(request.recv(1024*1000))
+                            except:
+                                print("[2] Error al hacer reply\n\n\n")
