@@ -100,33 +100,15 @@ def get_host_from_header_list(list_):
 def get_conn_to_server(output_conn_request_reply, request):
     #Lo parametrizaremos en el futuro
     port = 80
+      
+    sock_aux = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        sock_aux.connect((socket.gethostbyname(get_host_from_header_list(request['headers_list'])),port))
+    except:
+        print( get_str_time_ProxPy() + ERROR_TO_CONN_WITH_SW + get_host_from_header_list(request['headers_list'])+':'+str(port))
 
-    if not is_already_conn_sw(output_conn_request_reply, 
-                            socket.gethostbyname(get_host_from_header_list(request['headers_list'])),
-                             get_output_socket_from_request(output_conn_request_reply,
-                                                             socket.gethostbyname(get_host_from_header_list(request['headers_list'])))):
-        
-        sock_aux = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    output_conn_request_reply.append([sock_aux,socket.gethostbyname(get_host_from_header_list(request['headers_list'])),[request],[]])
 
-        try:
-            sock_aux.connect((socket.gethostbyname(get_host_from_header_list(request['headers_list'])),port))
-        except:
-            print( get_str_time_ProxPy() + ERROR_TO_CONN_WITH_SW + get_host_from_header_list(request['headers_list'])+':'+str(port))
-
-        output_conn_request_reply.append([sock_aux,socket.gethostbyname(get_host_from_header_list(request['headers_list'])),[request],[]])
-
-    else:
-        sock_aux = append_request(output_conn_request_reply,socket.gethostbyname(get_host_from_header_list(request['headers_list'])), request)
-
-        if sock_aux._closed:
-            try:
-                sock_aux.connect((socket.gethostbyname(get_host_from_header_list(request['headers_list'])),port))
-            except:
-                print( get_str_time_ProxPy() + ERROR_TO_CONN_WITH_SW + get_host_from_header_list(request['headers_list'])+':'+str(port))
-            
-            #Update socket
-            update_socket_output_conn(output_conn_request_reply,socket.gethostbyname(get_host_from_header_list(request['headers_list'])),sock_aux)
-    
     return sock_aux
 
 #To update socket descriptor
@@ -245,7 +227,7 @@ if __name__ == "__main__":
         proxy_port = int(sys.argv[1])
         proxy_timeout = 300.0
         debug_mode = bool(sys.argv[2])
-        BUFFER_SIZE = 1024*8
+        BUFFER_SIZE = 1024*1000
 
 	    #Prepare our TCP socket where we will hear connections from web navigators
         our_proxy_socket = get_our_socket(proxy_port)
@@ -339,7 +321,7 @@ if __name__ == "__main__":
                                     request = http_request_parser(data.decode('utf-8'))
                                 except:
                                     print( get_str_time_ProxPy() + ERROR_TO_RCV_FROM_NAV + ' \n\n'+str(data))
-
+                                    break
                                 #Open connection to get uri
                                 host_uri = get_conn_to_server(output_conn_request_reply, request)
 
