@@ -5,6 +5,7 @@ import os
 import select
 import time
 import datetime
+from collections import OrderedDict
 
 #Note: 
 #
@@ -14,14 +15,21 @@ import datetime
 
 #Global vars
 MSG_PROXPY_INACTIVE = '[ProxPy] Proxy inactive ...'
-ERROR_TO_RCV_FROM_NAV = '[ProxPy] Error to recover the request from: '
+ERROR_TO_RCV_FROM_NAV = '[ProxPy] Error, cannot recover the request from: '
+ERROR_TO_RCV_FROM_SW =  '[ProxPy] Error, cannot recover the server reply from: '
+ERROR_TO_CONN_WITH_SW = '[ProxPy] Error, cannot connect with Server: '
 
-
-#MACROS
+#MACROS (str)
 CRLF = '\r\n'  #Carriage return AND line feed
 WSP = ' '
 NSP = ''
 COLON = ':'
+
+#MACROS (byte)
+CRLF_B = b'\r\n'  #Carriage return AND line feed
+WSP_B = b' '
+NSP_B = b''
+COLON_B = b':'
 
 #To get our socket TCP, where we will hear connections from web navigators
 def get_our_socket(port):
@@ -35,9 +43,8 @@ def get_our_socket(port):
 #Aux func to know if one item is in one list
 def is_in_the_list(list_, element):
 
-    for items in list_:
-        if list_.count(element):
-            return True
+    if list_.count(element):
+        return True
 
     return False
 
@@ -49,7 +56,7 @@ def get_str_time_ProxPy():
 def http_request_parser(data):
 
     #Request dic
-    request = { 'method': '-', 'version': '-', 'uri': '-', 'header_count': 0, 'headers_dic': {}, 'body': '-'}
+    request = { 'method': '-', 'version': '-', 'uri': '-', 'header_count': 0, 'headers_list': [], 'body': '-'}
     
     http_request_parser_line(request, data.split(CRLF)[0])
     http_request_parser_headers(request,data.split(CRLF)[1:])
@@ -71,7 +78,7 @@ def http_request_parser_headers(request,data):
         if items is NSP:
             break
         else:    
-            request['headers_dic'].update({items.split(COLON)[0] : (items.split(COLON + WSP)[1]).strip()})
+            request['headers_list'].append([items.split(COLON)[0], (items.split(COLON + WSP)[1]).strip()])
             request['header_count'] += 1 
 
 
@@ -83,6 +90,99 @@ def http_request_parser_body(request, data):
     else:
         request['body'] = data[0]
 
+def get_host_from_header_list(list_):
+    
+    for item in list_:
+        if item[0] == 'Host':
+            return item[1]
+
+#To get a conn with WS
+def get_conn_to_server(output_conn_request_reply, request):
+
+    if not is_already_conn_sw(output_conn_request_reply, socket.gethostbyname(get_host_from_header_list(request['headers_list']))):
+        #Lo parametrizaremos en el futuro
+        sock_aux = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        port = 80
+
+        try:
+            sock_aux.connect((socket.gethostbyname(get_host_from_header_list(request['headers_list'])),port))
+        except:
+            print( get_str_time_ProxPy() + ERROR_TO_CONN_WITH_SW + get_host_from_header_list(request['headers_list'])+':'+str(port))
+
+        output_conn_request_reply.append([sock_aux,socket.gethostbyname(get_host_from_header_list(request['headers_list'])),[request],[]])
+
+    else:
+        sock_aux = append_request(output_conn_request_reply,socket.gethostbyname(get_host_from_header_list(request['headers_list'])), request)
+    
+    return sock_aux
+
+#Returns True if we have a conn | False if we havent
+def is_already_conn_sw(output_conn_request_reply, ip_addr ):
+
+    for conns in output_conn_request_reply:
+        if conns[1] is ip_addr:
+            return True
+
+    return False
+
+#To append a request to active conn | return socket descriptor
+def append_request(conn_request,ip_addr, request_to_append ):
+
+    for conns in conn_request:
+        if conns[1] is ip_addr:
+            conns[2].append(request_to_append)
+            return conn[0]
+
+#To append a request to input_conn_request_reply list           
+def add_to_input_conn_request(input_conn_request_reply, sock_to_rcv, request):
+
+    if not is_already_conn_sw(input_conn_request_reply, sock_to_rcv.getsockname()[0]):
+        input_conn_request_reply.append([sock_to_rcv, sock_to_rcv.getsockname()[0],[request],[]])
+    else:
+        append_request(input_conn_request_reply, sock_to_rcv.getsockname()[0],request)
+
+#To send a request to server web 
+def send_request_to_sw(host_uri, request):
+    #Var aux
+    pet = b''
+
+    #We have to re-create the request
+    #Add first line 
+    pet += WSP_B.join([(request['method']).encode(),(request['uri']).encode(),(request['version']).encode()]) + CRLF_B
+
+    #Add headers (Here we can add 'if' to change some header )
+    for item in request['headers_list']:
+        pet += item[0].encode() + b': '+item[1].encode() + CRLF_B 
+
+    #Fin headers
+    pet += CRLF_B
+
+    #Add Body 
+    if request['body'] is not '-':
+        pet += (request['body']).encode()
+    
+    #Fin request
+    pet += CRLF_B
+
+
+    #Send it 
+    host_uri.sendall(pet)
+
+#To get the socket where we will send the reply
+def get_input_socket_from_request(list_intput, request):
+
+    #HTTP replys in order
+    for item in input_conn_request_reply:
+        if item[2][0] == request:
+            return item[0]
+
+#To get the request associate with a socket
+def get_request_from_output_conn(output_conn_request_reply, sock_to_rcv):
+
+    #HTTP replys in order
+    for item in output_conn_request_reply:
+        if item[0] == sock_to_rcv:
+            return item[2][0]
 
 if __name__ == "__main__":
 
@@ -111,11 +211,11 @@ if __name__ == "__main__":
         #To save 
         #Input connections
         input_conn = []
-        input_conn_request = []
+        input_conn_request_reply = []
 
         #Output connections 
         output_conn = []
-        output_conn_request = []
+        output_conn_request_reply = []
         
         #We'ill store the request like this : [ [sockets_descriptor, str_host, [current_request_1, current_request_2] ] ]
 
@@ -155,20 +255,30 @@ if __name__ == "__main__":
                                 if debug_mode:
                                     print("{}".format(data.decode('utf-8')))
                             except:
-                                print( get_str_time_ProxPy() + ERROR_TO_RCV_FROM_NAV + sock_to_rcv.getsockname()[0]+':'+sock_to_rcv.getsockname()[1])
+                                print( get_str_time_ProxPy() + ERROR_TO_RCV_FROM_NAV + sock_to_rcv.getsockname()[0]+':'+ str(sock_to_rcv.getsockname()[1]))
                             
                             if data:
                                 #Parse the request
                                 request = http_request_parser(data.decode('utf-8'))
 
                                 #Open connection to get uri
-                                host_uri = get_conn_to_server(output_conn_request, request)
+                                host_uri = get_conn_to_server(output_conn_request_reply, request)
+
+                                #Add to input_conn the request
+                                add_to_input_conn_request(input_conn_request_reply, sock_to_rcv, request)
 
                                 #Add to sockets_rd only if its necessary
+                                if not is_in_the_list(sockets_rd, host_uri):
+                                    sockets_rd.append(host_uri)
+
+                                #Add to output_conn only if its necessary
+                                if not is_in_the_list(output_conn, host_uri):
+                                    output_conn.append(host_uri)
+
 
                                 #Send it request
-                                
-                                 
+                                send_request_to_sw(host_uri, request)
+     
                             else:
                                 sock_to_rcv.close()
                                 sockets_rd.remove(sock_to_rcv)
@@ -178,6 +288,23 @@ if __name__ == "__main__":
                         elif sock_to_rcv != our_proxy_socket and sock_to_rcv is event and is_in_the_list(output_conn,sock_to_rcv):
 
                             try:
-                                sockets_rd[2].sendall(request.recv(1024*1000))
+                                data_reply = sock_to_rcv.recv(1024*1000)
+                                if debug_mode:
+                                    print(str(data_reply))
                             except:
-                                print("[2] Error al hacer reply\n\n\n")
+                                print( get_str_time_ProxPy() + ERROR_TO_RCV_FROM_SW + sock_to_rcv.getsockname()[0]+':'+ str(sock_to_rcv.getsockname()[1]))
+
+                            if data:
+
+                                #To get the socket where we should send the server reply
+                                socket_to_reply = get_input_socket_from_request(input_conn_request_reply, get_request_from_output_conn(output_conn_request_reply , sock_to_rcv))
+
+
+                            else:
+                                sock_to_rcv.close()
+                                sockets_rd.remove(sock_to_rcv)
+                                output_conn.remove(sock_to_rcv)
+
+
+
+
