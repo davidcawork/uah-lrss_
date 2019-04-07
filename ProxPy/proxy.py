@@ -75,7 +75,7 @@ def http_request_parser_line(request, data):
 def http_request_parser_headers(request,data):
 
     for items in data:
-        if items is NSP:
+        if items == NSP:
             break
         else:    
             request['headers_list'].append([items.split(COLON)[0], (items.split(COLON + WSP)[1]).strip()])
@@ -120,7 +120,7 @@ def get_conn_to_server(output_conn_request_reply, request):
 def is_already_conn_sw(output_conn_request_reply, ip_addr ):
 
     for conns in output_conn_request_reply:
-        if conns[1] is ip_addr:
+        if conns[1] == ip_addr:
             return True
 
     return False
@@ -129,7 +129,7 @@ def is_already_conn_sw(output_conn_request_reply, ip_addr ):
 def append_request(conn_request,ip_addr, request_to_append ):
 
     for conns in conn_request:
-        if conns[1] is ip_addr:
+        if conns[1] == ip_addr:
             conns[2].append(request_to_append)
             return conn[0]
 
@@ -197,6 +197,7 @@ if __name__ == "__main__":
         proxy_port = int(sys.argv[1])
         proxy_timeout = 300.0
         debug_mode = bool(sys.argv[2])
+        BUFFER_SIZE = 1024*4
 
 	    #Prepare our TCP socket where we will hear connections from web navigators
         our_proxy_socket = get_our_socket(proxy_port)
@@ -251,7 +252,7 @@ if __name__ == "__main__":
                 
                             #Recover request from Web nav
                             try:
-                                data = sock_to_rcv.recv(1024*1000)
+                                data = sock_to_rcv.recv(BUFFER_SIZE)
                                 if debug_mode:
                                     print("{}".format(data.decode('utf-8')))
                             except:
@@ -288,17 +289,22 @@ if __name__ == "__main__":
                         elif sock_to_rcv != our_proxy_socket and sock_to_rcv is event and is_in_the_list(output_conn,sock_to_rcv):
 
                             try:
-                                data_reply = sock_to_rcv.recv(1024*1000)
+                                data_reply = sock_to_rcv.recv(BUFFER_SIZE)
                                 if debug_mode:
                                     print(str(data_reply))
                             except:
                                 print( get_str_time_ProxPy() + ERROR_TO_RCV_FROM_SW + sock_to_rcv.getsockname()[0]+':'+ str(sock_to_rcv.getsockname()[1]))
 
                             if data:
-
                                 #To get the socket where we should send the server reply
                                 socket_to_reply = get_input_socket_from_request(input_conn_request_reply, get_request_from_output_conn(output_conn_request_reply , sock_to_rcv))
 
+                                #Parse the data_reply
+
+                                #Check if we have recover all replied data
+
+                                #Send it
+                                socket_to_reply.sendall(data_reply)
 
                             else:
                                 sock_to_rcv.close()

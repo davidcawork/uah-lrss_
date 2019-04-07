@@ -12,8 +12,8 @@
             "cwd": "${workspaceFolder}/ProxPy/",
             "program": "${file}",
             "console": "integratedTerminal",
-            //"args":["5001","True"]
-            "args":["5000","True"]
+            "args":["5001","True"]
+            //"args":["5000","True"]
         },
         {
             "type": "gdb",
