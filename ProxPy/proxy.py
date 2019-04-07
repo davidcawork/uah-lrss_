@@ -17,9 +17,11 @@ MSG_PROXPY_INACTIVE = '[ProxPy] Proxy inactive ...'
 ERROR_TO_RCV_FROM_NAV = '[ProxPy] Error to recover the request from: '
 
 
-
-
-
+#MACROS
+CRLF = '\r\n'  #Carriage return AND line feed
+WSP = ' '
+NSP = ''
+COLON = ':'
 
 #To get our socket TCP, where we will hear connections from web navigators
 def get_our_socket(port):
@@ -43,19 +45,43 @@ def is_in_the_list(list_, element):
 def get_str_time_ProxPy():
     return ('['+(datetime.datetime.now()).strftime('%H:%M:%S')+'] ')
 
-#To get the Host from request
-def get_host_from_request(data):
+#To parse all incoming HTTP request
+def http_request_parser(data):
 
-    for lines in  data.split('\r\n'):
-        if line.count('Host: '):
-            return line.split('Host: ')[0]
+    #Request dic
+    request = { 'method': '-', 'version': '-', 'uri': '-', 'header_count': 0, 'headers_dic': {}, 'body': '-'}
+    
+    http_request_parser_line(request, data.split(CRLF)[0])
+    http_request_parser_headers(request,data.split(CRLF)[1:])
+    http_request_parser_body(request, data.split(CRLF)[request['header_count'] + 1 :])
 
-#To get the Resource from request
-def get_resource_from_request(data):
+    return request
 
-    for lines in  data.split('\r\n'):
-        if line.count('GET '):
-            return line.split('Host: ')[0]
+#To parse all incoming HTTP request(Just first line)
+def http_request_parser_line(request, data):
+
+    request['method'] = data.split(WSP)[0]
+    request['uri'] = data.split(WSP)[1]
+    request['version'] = data.split(WSP)[2]
+
+#To parse all incoming HTTP request(headers)
+def http_request_parser_headers(request,data):
+
+    for items in data:
+        if items is NSP:
+            break
+        else:    
+            request['headers_dic'].update({items.split(COLON)[0] : (items.split(COLON + WSP)[1]).strip()})
+            request['header_count'] += 1 
+
+
+#To parse all incoming HTTP request(To get the body)
+def http_request_parser_body(request, data):
+
+    if data[0] is NSP:
+        request['body'] = '-'
+    else:
+        request['body'] = data[0]
 
 
 if __name__ == "__main__":
@@ -85,11 +111,15 @@ if __name__ == "__main__":
         #To save 
         #Input connections
         input_conn = []
+        input_conn_request = []
 
         #Output connections 
         output_conn = []
-
+        output_conn_request = []
         
+        #We'ill store the request like this : [ [sockets_descriptor, str_host, [current_request_1, current_request_2] ] ]
+
+
         # We can exit by CTRL+C signal
         while True:
             try:
@@ -129,10 +159,16 @@ if __name__ == "__main__":
                             
                             if data:
                                 #Parse the request
-                                host = get_host_from_request(str(data))
-                                content = get_resource_from_request(str(data))
+                                request = http_request_parser(data.decode('utf-8'))
 
-                                # 
+                                #Open connection to get uri
+                                host_uri = get_conn_to_server(output_conn_request, request)
+
+                                #Add to sockets_rd only if its necessary
+
+                                #Send it request
+                                
+                                 
                             else:
                                 sock_to_rcv.close()
                                 sockets_rd.remove(sock_to_rcv)
