@@ -5,7 +5,7 @@ import os
 import select
 import time
 import datetime
-from collections import OrderedDict
+from random import *
 
 #Note: 
 #
@@ -24,13 +24,17 @@ MSG_PROXPY_HI = '[ProxPy] Welcome to ProxPy CLI'
 MSG_PROXPY_BYE = '[ProxPy] Shutdown ProxPy ....'
 MSG_PROXPY_VERSION = '[ProxPy] Current version is: ProxPy v'+ str(VERSION_MAJOR_NUMBER) + '.' + str(VERSION_MINOR_NUMBER)
 MSG_PROXPY_NEW_INPUT_CONN = '[ProxPy] New input connection from: '
+ERROR_BAD_ARGVS_FROM_USER = '[ProxPy] Error, incorrect arguments: '
 ERROR_TO_RCV_FROM_NAV = '[ProxPy] Error, cannot recover the request from: '
 ERROR_TO_RCV_FROM_SW =  '[ProxPy] Error, cannot recover the server reply from: '
+ERROR_TO_SEND_REQUEST = '[ProxPy] Error, cannot send the request to the server, connecting again...'
 ERROR_TO_CONN_WITH_SW = '[ProxPy] Error, cannot connect with Server: '
 ERROR_TO_CLOSE_INPUT_CONN = '[ProxPy] Error, cannot close the input connections: '
 ERROR_TO_CLOSE_OUTPUT_CONN = '[ProxPy] Error, cannot close the output connections: '
 ERROR_TO_CLOSE_CONN = '[ProxPy] Error, cannot close the connections: '
-
+ERROR_TO_BIND_OUR_PORT = '[ProxPy] Error, our listening port is already in use, instead we use port: '
+ERROR_TO_PREPARE_REQUEST= '[ProxPy] Error, cannot prepare the request: '
+ERROR_TO_REPLY_NAV = '[ProxPy] Error, cannot process the request: '
 
 #MACROS (str)
 CRLF = '\r\n'  #Carriage return AND line feed
@@ -46,13 +50,22 @@ COLON_B = b':'
 
 #To get our socket TCP, where we will hear connections from web navigators
 def get_our_socket(port):
-
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.setblocking(0)
-    s.bind(('',port))
-    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    s.listen(5)
-    return s
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.setblocking(0)
+        s.bind(('',port))
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        s.listen(5)
+        return s
+    except:
+        new_port = randint(8000, 9000)
+        print(get_str_time_ProxPy()+ERROR_TO_BIND_OUR_PORT+ str(new_port))
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.setblocking(0)
+        s.bind(('',new_port))
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        s.listen(5)
+        return s
 
 #Aux func to know if one item is in one list
 def is_in_the_list(list_, element):
@@ -77,6 +90,11 @@ def http_request_parser(data):
     http_request_parser_body(request, data.split(CRLF)[request['header_count'] + 1 :])
 
     return request
+
+#To handle bad argvs
+def bad_argvs_handler():
+    print( get_str_time_ProxPy() + ERROR_BAD_ARGVS_FROM_USER +  '\n\n\t Usage: python3 ' + 
+                sys.argv[0] + ' <Port> .... \n\n\n For more help you can chek: python3 '+ sys.argv[0] + ' -h\n')
 
 #To parse all incoming HTTP request(Just first line)
 def http_request_parser_line(request, data):
@@ -192,6 +210,7 @@ def send_request_to_sw(host_uri, request, output_conn_request_reply):
     try:
         host_uri.sendall(pet)
     except:
+        print(get_str_time_ProxPy()+ ERROR_TO_SEND_REQUEST)
         host_uri = get_conn_to_server(output_conn_request_reply, request)
         host_uri.sendall(pet)
 
@@ -223,9 +242,13 @@ def get_request_from_output_conn(output_conn_request_reply, sock_to_rcv):
 #To remove a conn from list 
 def remove_conn(list_to_rm, socket_to_rm):
 
-    for item in list_to_rm:
-        if item[0] == socket_to_rm:
-            list_to_rm.remove(item)
+    try:
+        for item in list_to_rm:
+            if item[0] == socket_to_rm:
+                list_to_rm.remove(item)
+    except:
+        print( get_str_time_ProxPy() + ERROR_TO_CLOSE_CONN +' Value conn list '+str(list_to_rm))
+
 
 # To close al connections (Web navigators and SW)
 def close_all_conn(sockets_rd, input_conn, output_conn):
@@ -254,7 +277,7 @@ if __name__ == "__main__":
 
     #Check argv's
     if len(sys.argv) != 3:
-	    print('Error: usage: ./' + sys.argv[0] + ' <Port>')
+	    bad_argvs_handler()
 	    exit(0)
     
     else:
@@ -265,10 +288,10 @@ if __name__ == "__main__":
         debug_mode = bool(sys.argv[2])
         BUFFER_SIZE = 1024*1000
 
-	    #Prepare our TCP socket where we will hear connections from web navigators
+	    # --- Prepare our TCP socket where we will hear connections from web navigators ---
         our_proxy_socket = get_our_socket(proxy_port)
 
-        #Prepare our udp socket where w'ill log every single pet.
+        # --- Prepare our udp socket where w'ill log every single pet ---
         # 
 
 
@@ -286,12 +309,12 @@ if __name__ == "__main__":
         
         #We'ill store the request like this : [ [sockets_descriptor, str_host, [current_request_1, current_request_2] ] ]
 
-        #Say welcome to ProxPy and print current version
+        # --- Say welcome to ProxPy and print current version ---
         sys.stdout.flush()
         os.system('clear')
         print(get_str_time_ProxPy() + MSG_PROXPY_HI +'\n' +get_str_time_ProxPy()+ MSG_PROXPY_VERSION)
 
-        # We can exit by CTRL+C signal
+        # We can exit by CTRL+C signal :)
         while True:
             try:
 	    		# The optional timeout argument specifies a time-out as a floating point number in seconds.
@@ -326,36 +349,42 @@ if __name__ == "__main__":
                                     print("{}".format(data.decode('utf-8')))
                             except:
                                 print( get_str_time_ProxPy() + ERROR_TO_RCV_FROM_NAV + sock_to_rcv.getsockname()[0]+':'+ str(sock_to_rcv.getsockname()[1]))
-                            
+                                pass
+                                
                             if data:
                                 #Parse the request
                                 try:
                                     request = http_request_parser(data.decode('utf-8'))
                                 except:
                                     print( get_str_time_ProxPy() + ERROR_TO_RCV_FROM_NAV + ' \n\n'+str(data))
-                                    break
+                                    pass
 
                                 #Process the request
 
                                 #Filter
                                 if request['method'] == 'GET' and get_host_from_header_list(request['headers_list']) != 'push.services.mozilla.com:443':
-                                    #Open connection to get uri
-                                    host_uri = get_conn_to_server(output_conn_request_reply, request)
+                                    try:   
+                                        #Open connection to get uri
+                                        host_uri = get_conn_to_server(output_conn_request_reply, request)
 
-                                    #Add to input_conn_request_reply the request
-                                    add_to_input_conn_request(input_conn_request_reply, sock_to_rcv, request)
+                                        #Add to input_conn_request_reply the request
+                                        add_to_input_conn_request(input_conn_request_reply, sock_to_rcv, request)
 
-                                    #Add to sockets_rd only if its necessary
-                                    if not is_in_the_list(sockets_rd, host_uri):
-                                        sockets_rd.append(host_uri)
+                                        #Add to sockets_rd only if its necessary
+                                        if not is_in_the_list(sockets_rd, host_uri):
+                                            sockets_rd.append(host_uri)
 
-                                    #Add to output_conn only if its necessary
-                                    if not is_in_the_list(output_conn, host_uri):
-                                        output_conn.append(host_uri)
+                                        #Add to output_conn only if its necessary
+                                        if not is_in_the_list(output_conn, host_uri):
+                                            output_conn.append(host_uri)
 
-                                    #Send the request and add to the list output_conn_request_reply
-                                    send_request_to_sw(host_uri, request, output_conn_request_reply)
+                                        #Send the request and add to the list output_conn_request_reply
+                                        send_request_to_sw(host_uri, request, output_conn_request_reply)
+                                    except:
+                                        print(get_str_time_ProxPy() + ERROR_TO_PREPARE_REQUEST + request['method'] + ' request to '+get_host_from_header_list(request['headers_list']))
+                                        pass
 
+                                    #Main handler request
                                     while True:
                                         try:
                                             #If host_uri sockets is closed, we try reconnect with the web server
@@ -377,7 +406,7 @@ if __name__ == "__main__":
                                                 remove_conn(output_conn_request_reply, host_uri)    
                                                 break
                                         except:
-                                            #Faltaria añadir aqui codigo de errores
+                                            print(get_str_time_ProxPy() + ERROR_TO_REPLY_NAV + request['method'] + ' request to '+get_host_from_header_list(request['headers_list']))
                                             break
 
                             else:
