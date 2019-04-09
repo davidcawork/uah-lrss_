@@ -14,10 +14,23 @@ from collections import OrderedDict
 #   For more info: github.com/davidcawork
 
 #Global vars
-MSG_PROXPY_INACTIVE = '[ProxPy] Proxy inactive ...'
+VERSION_MAJOR_NUMBER = 1
+VERSION_MINOR_NUMBER = 0
+DEBUG_LEVEL_MAX = 3
+DEBUG_LEVEL_NORMAL = 2
+DEBUG_LEVEL_LOW = 1
+MSG_PROXPY_INACTIVE = '[ProxPy] ProxPy inactive ...'
+MSG_PROXPY_HI = '[ProxPy] Welcome to ProxPy CLI'
+MSG_PROXPY_BYE = '[ProxPy] Shutdown ProxPy ....'
+MSG_PROXPY_VERSION = '[ProxPy] Current version is: ProxPy v'+ str(VERSION_MAJOR_NUMBER) + '.' + str(VERSION_MINOR_NUMBER)
+MSG_PROXPY_NEW_INPUT_CONN = '[ProxPy] New input connection from: '
 ERROR_TO_RCV_FROM_NAV = '[ProxPy] Error, cannot recover the request from: '
 ERROR_TO_RCV_FROM_SW =  '[ProxPy] Error, cannot recover the server reply from: '
 ERROR_TO_CONN_WITH_SW = '[ProxPy] Error, cannot connect with Server: '
+ERROR_TO_CLOSE_INPUT_CONN = '[ProxPy] Error, cannot close the input connections: '
+ERROR_TO_CLOSE_OUTPUT_CONN = '[ProxPy] Error, cannot close the output connections: '
+ERROR_TO_CLOSE_CONN = '[ProxPy] Error, cannot close the connections: '
+
 
 #MACROS (str)
 CRLF = '\r\n'  #Carriage return AND line feed
@@ -214,6 +227,28 @@ def remove_conn(list_to_rm, socket_to_rm):
         if item[0] == socket_to_rm:
             list_to_rm.remove(item)
 
+# To close al connections (Web navigators and SW)
+def close_all_conn(sockets_rd, input_conn, output_conn):
+    
+    try:    
+        for sck_in in input_conn:
+            sck_in.close()
+        input_conn.clear()
+    except:
+        print( get_str_time_ProxPy() + ERROR_TO_CLOSE_INPUT_CONN +' Value input conn list '+str(input_conn))
+    try:
+        for sck_out in output_conn:
+            sck_out.close()
+        output_conn.clear()
+    except:
+        print( get_str_time_ProxPy() + ERROR_TO_CLOSE_OUTPUT_CONN +' Value output conn list '+str(output_conn))
+    try:
+        for sck in sockets_rd:
+            sck.close()
+        sockets_rd.clear()
+    except:
+        print( get_str_time_ProxPy() + ERROR_TO_CLOSE_CONN +' Value conn list '+str(sockets_rd))
+
 
 if __name__ == "__main__":
 
@@ -251,18 +286,21 @@ if __name__ == "__main__":
         
         #We'ill store the request like this : [ [sockets_descriptor, str_host, [current_request_1, current_request_2] ] ]
 
+        #Say welcome to ProxPy and print current version
+        sys.stdout.flush()
+        os.system('clear')
+        print(get_str_time_ProxPy() + MSG_PROXPY_HI +'\n' +get_str_time_ProxPy()+ MSG_PROXPY_VERSION)
 
         # We can exit by CTRL+C signal
         while True:
             try:
-
 	    		# The optional timeout argument specifies a time-out as a floating point number in seconds.
                 events_rd,events_wr,events_excp = select.select( sockets_rd,[],[])
 
             except KeyboardInterrupt:
-                print('\n\n\nShutdown ProxPy....')
-                for sock in sockets_rd:
-                    sock.close()
+                print( '\n\n\n'+get_str_time_ProxPy() + MSG_PROXPY_BYE)
+                #Close al connections (Web navigators and SW) and exit
+                close_all_conn(sockets_rd, input_conn, output_conn)
                 sys.exit(0)
 
             for event in events_rd:
@@ -278,7 +316,6 @@ if __name__ == "__main__":
                 else:
             	    #Handle other conn
                     for sock_to_rcv in sockets_rd:
-
                         #To manage request from web nav. connections 
                         if sock_to_rcv != our_proxy_socket and sock_to_rcv is event and is_in_the_list(input_conn,sock_to_rcv):
                 
@@ -297,11 +334,15 @@ if __name__ == "__main__":
                                 except:
                                     print( get_str_time_ProxPy() + ERROR_TO_RCV_FROM_NAV + ' \n\n'+str(data))
                                     break
+
+                                #Process the request
+
+                                #Filter
                                 if request['method'] == 'GET' and get_host_from_header_list(request['headers_list']) != 'push.services.mozilla.com:443':
                                     #Open connection to get uri
                                     host_uri = get_conn_to_server(output_conn_request_reply, request)
 
-                                    #Add to input_conn the request
+                                    #Add to input_conn_request_reply the request
                                     add_to_input_conn_request(input_conn_request_reply, sock_to_rcv, request)
 
                                     #Add to sockets_rd only if its necessary
@@ -312,11 +353,13 @@ if __name__ == "__main__":
                                     if not is_in_the_list(output_conn, host_uri):
                                         output_conn.append(host_uri)
 
-                                    #Send it request
+                                    #Send the request and add to the list output_conn_request_reply
                                     send_request_to_sw(host_uri, request, output_conn_request_reply)
 
                                     while True:
                                         try:
+                                            #If host_uri sockets is closed, we try reconnect with the web server
+                                            #Then we recv the reply to our request
                                             if host_uri._closed:
                                                 host_uri = get_conn_to_server(output_conn_request_reply, request)
                                                 data_rpl = host_uri.recv(BUFFER_SIZE)
@@ -324,17 +367,22 @@ if __name__ == "__main__":
                                                 data_rpl = host_uri.recv(BUFFER_SIZE)
 
                                             if data_rpl:
+                                                #If data is not b' ' we send it back to web navigator
                                                 sock_to_rcv.send(data_rpl)
                                             else:
+                                                #When we have sent it the reply close the host_uri socket and remove from our list
                                                 host_uri.close()
-                                                output_conn.remove(host_uri)
-                                                remove_conn(output_conn_request_reply, host_uri)
                                                 sockets_rd.remove(host_uri)
+                                                output_conn.remove(host_uri)
+                                                remove_conn(output_conn_request_reply, host_uri)    
                                                 break
                                         except:
+                                            #Faltaria añadir aqui codigo de errores
                                             break
 
                             else:
+                                #Only when we have rcv b' ' from web navigator, close the conn and remove the socket
+                                # descriptor from our input list
                                 sock_to_rcv.close()
                                 sockets_rd.remove(sock_to_rcv)
                                 input_conn.remove(sock_to_rcv)
