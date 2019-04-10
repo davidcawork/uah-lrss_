@@ -13,7 +13,7 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "args":["8010"]
-            //"args":["5000","True"]
+            //"args":["8080","True"]
         },
         {
             "type": "gdb",

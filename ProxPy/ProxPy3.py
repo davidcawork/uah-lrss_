@@ -26,6 +26,10 @@ MSG_PROXPY_HI = '[ProxPy] Welcome to ProxPy CLI'
 MSG_PROXPY_BYE = '[ProxPy] Turning off ProxPy ....'
 MSG_PROXPY_VERSION = '[ProxPy] Current version is: ProxPy v'+ str(VERSION_MAJOR_NUMBER) + '.' + str(VERSION_MINOR_NUMBER)
 MSG_PROXPY_NEW_INPUT_CONN = '[ProxPy] New input connection from: '
+MSG_PROXPY_LOG_DATA = '[ProxPy] Log data'
+MSG_PROXPY_LOG_BYE = '[ProxPy] Bye!'
+MSG_PROXPY_LOG_REQ = '[ProxPy] Log data: Request'
+MSG_PROXPY_LOG_RPLY = '[ProxPy] Log data: Reply'
 ERROR_BAD_ARGVS_FROM_USER = '[ProxPy] Error, incorrect arguments: '
 ERROR_TO_RCV_FROM_NAV = '[ProxPy] Error, cannot recover the request from: '
 ERROR_TO_RCV_FROM_SW =  '[ProxPy] Error, cannot recover the server reply from: '
@@ -37,6 +41,8 @@ ERROR_TO_CLOSE_CONN = '[ProxPy] Error, cannot close the connections: '
 ERROR_TO_BIND_OUR_PORT = '[ProxPy] Error, our listening port is already in use, instead we use port: '
 ERROR_TO_PREPARE_REQUEST= '[ProxPy] Error, cannot prepare the request: '
 ERROR_TO_REPLY_NAV = '[ProxPy] Error, cannot process the request: '
+ERROR_TO_LOG_REQUEST = '[ProxPy] Error, cannot log the request'
+ERROR_TO_LOG_REPLY = '[ProxPy] Error, cannot log the reply'
 
 #MACROS (str)
 CRLF = '\r\n'  #Carriage return AND line feed
@@ -124,6 +130,7 @@ def http_request_parser_body(request, data):
     else:
         request['body'] = data[0]
 
+#To get host from request
 def get_host_from_header_list(list_):
     
     for item in list_:
@@ -274,12 +281,31 @@ def close_all_conn(sockets_rd, input_conn, output_conn):
     except:
         print( get_str_time_ProxPy() + ERROR_TO_CLOSE_CONN +' Value conn list '+str(sockets_rd))
 
+#Welcome msg
+def welcome():
+    sys.stdout.flush()
+    os.system('clear')
+    print(get_str_time_ProxPy() + MSG_PROXPY_HI +'\n' +get_str_time_ProxPy()+ MSG_PROXPY_VERSION)
+
 #Handler CTRL+C
 def signal_handler(sig, frame):
     print( '\n\n\n'+get_str_time_ProxPy() + MSG_PROXPY_BYE)
     #Close al connections (Web navigators and SW) and exit
     close_all_conn(sockets_rd, input_conn, output_conn)
     sys.exit(0)
+
+#To get UDP sockets desc.
+def get_logger_socket():
+    return socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
+#To send to our logger  request info 
+def send_to_logger_request(logger, logger_id, ip_client, ip_dest_, port_client,request):
+    try:
+        # Our pkt : [DATA, REQ/RPLY, [method, version, server(url), server(ip), client(ip), client(port)]]
+        logger.sendto(pickle.dumps([MSG_PROXPY_LOG_DATA, MSG_PROXPY_LOG_REQ,[request['method'], request['version'], get_host_from_header_list(request['headers_list']), ip_dest_,ip_client, port_client]]), (logger_id[0],logger_id[1]))
+    except:
+        print( get_str_time_ProxPy() + ERROR_TO_LOG_REQUEST )
+
 
 if __name__ == "__main__":
 
@@ -290,11 +316,15 @@ if __name__ == "__main__":
     
     else:
 
+        # --- Say welcome to ProxPy and print current version ---
+        welcome()
+
         # --- Vars ----
         proxy_port = int(sys.argv[1])
         proxy_timeout = 300.0
         debug_mode = bool(sys.argv[2])
         BUFFER_SIZE = 1024*1000
+        logger_id = ['localhost', 8010]
 
         #Let's to prepare the CTRL + C signal to handle it and be able  to show the statistics before it comes out
         signal.signal(signal.SIGINT, signal_handler)
@@ -303,7 +333,7 @@ if __name__ == "__main__":
         our_proxy_socket = get_our_socket(proxy_port)
 
         # --- Prepare our udp socket where w'ill log every single pet ---
-        logger = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        logger = get_logger_socket()
 
 
         #Sockets to read
@@ -320,10 +350,7 @@ if __name__ == "__main__":
         
         #We'ill store the request like this : [ [sockets_descriptor, str_host, [current_request_1, current_request_2] ] ]
 
-        # --- Say welcome to ProxPy and print current version ---
-        sys.stdout.flush()
-        os.system('clear')
-        print(get_str_time_ProxPy() + MSG_PROXPY_HI +'\n' +get_str_time_ProxPy()+ MSG_PROXPY_VERSION)
+        
 
         # We can exit by CTRL+C signal :)
         while True:
@@ -389,9 +416,10 @@ if __name__ == "__main__":
                                         if not is_in_the_list(output_conn, host_uri):
                                             output_conn.append(host_uri)
 
-                                        #Send the request and add to the list output_conn_request_reply
-                                        logger.sendto(pickle.dumps(['DATA', 'REQUEST','data']) , ('localhost',8010))
+                                        #Send the request and add to the list output_conn_request_reply, and log it
+                                        send_to_logger_request(logger, logger_id, sock_to_rcv.getsockname()[0],socket.gethostbyname(get_host_from_header_list(request['headers_list'])), sock_to_rcv.getsockname()[1],request)
                                         send_request_to_sw(host_uri, request, output_conn_request_reply)
+
                                     except:
                                         print(get_str_time_ProxPy() + ERROR_TO_PREPARE_REQUEST + request['method'] + ' request to '+get_host_from_header_list(request['headers_list']))
                                         pass
@@ -409,7 +437,7 @@ if __name__ == "__main__":
 
                                             if data_rpl:
                                                 #If data is not b' ' we send it back to web navigator
-                                                logger.sendto(pickle.dumps(['DATA', 'REPLY','data']) , ('localhost',8010))
+                                                #logger.sendto(pickle.dumps(['DATA', 'REPLY','data']) , ('localhost',8010))
                                                 sock_to_rcv.send(data_rpl)
                                             else:
                                                 #When we have sent it the reply close the host_uri socket and remove from our list
