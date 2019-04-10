@@ -78,7 +78,9 @@ def logger(file_to_log, data):
             file_to_log.write(get_str_time_ProxPy() +'(REQUEST) Method: ' +data[2][0]+' | Version: '+data[2][1]
             +' | IP_server: '+data[2][3]+' | IP_client: '+data[2][4]+' | Port_client: '+str(data[2][5])+' | URL: '+data[2][2]+'\n' )
         elif data[1] == MSG_PROXPY_LOG_RPLY:
-            file_to_log.write( get_str_time_ProxPy() + 'REPLY\n')
+            file_to_log.write(get_str_time_ProxPy() +'(Reply)    State: ' +data[2][1]+' | Version: '+data[2][0]
+            +' | IP_server: '+data[2][3]+' | IP_client: '+data[2][4]+' | Port_client: '+str(data[2][5])+' | URL: '+data[2][2]+'\n' )
+        
     except:
         file_to_log.close()
         exit(-1)
