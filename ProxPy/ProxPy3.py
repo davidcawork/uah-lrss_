@@ -306,11 +306,37 @@ def send_to_logger_request(logger, logger_id, ip_client, ip_dest_, port_client,r
     except:
         print( get_str_time_ProxPy() + ERROR_TO_LOG_REQUEST )
 
+#Init argparse
+def init_argvs():
+
+    parser = argparse.ArgumentParser(description="Welcome to ProxPy's help page", epilog='For more help you can check my github page:  github.com/davidcawork')
+    parser.add_argument('-p','--port',metavar='Port',type= int,default=8080,help='Provide an integer that will be our listen port (default = 8080)')
+    parser.add_argument('-d','--debug',metavar='Debug',type= int,default=3,help='Provide an integer that will be our debug level')
+    parser.add_argument('-t','--timeout',metavar='Timeout',type= int,default=300,help='Provide an integer that will be our debug level')
+    parser.add_argument('-b','--buffer',type= int,default=1024*10,help='Provide an integer that will be our buffer size(Bytes)')
+    parser.add_argument('-c','--max_conn',type= int,default=8,help='Provide an integer that will be max client conn avaible with ProxPy')
+    parser.add_argument('-fs','--filter_server',type= str,default="",help='Provide an [url/IP] that will be ban it to our clients')
+    parser.add_argument('-fc','--filter_client',type= str,default="",help='Provide an IP that will be ban it from ProxPy')
+
+    return parser
+
+#To prepare and parse all argvs
+def prepare_argvs(parser,proxy_port,proxy_timeout,debug_mode,max_client_conn,BUFFER_SIZE,list_filter_server,list_filter_client):
+
+    my_args = parser.parse_args()
+
+    proxy_port= my_args.port
+    proxy_timeout=my_args.timeout
+    debug_mode=my_args.debug
+    BUFFER_SIZE=my_args.buffer
+    max_client_conn=my_args.max_conn
+    list_filter_server.append(my_args.filter_server)
+    list_filter_client.append(my_args.filter_client)
 
 if __name__ == "__main__":
 
-    #Check argv's
-    if len(sys.argv) != 3:
+    #Check argv's and init args parser
+    if len(sys.argv) > 2:
 	    bad_argvs_handler()
 	    exit(0)
     
@@ -320,11 +346,20 @@ if __name__ == "__main__":
         welcome()
 
         # --- Vars ----
-        proxy_port = int(sys.argv[1])
+        parser = init_argvs()
+        proxy_port = 8080
         proxy_timeout = 300.0
-        debug_mode = bool(sys.argv[2])
+        list_filter_server = []
+        list_filter_client = []
+        max_client_conn = 8
+        debug_mode = 1
         BUFFER_SIZE = 1024*1000
         logger_id = ['localhost', 8010]
+
+        #To parse argvs 
+        prepare_argvs(parser,proxy_port,proxy_timeout,debug_mode,max_client_conn,BUFFER_SIZE,list_filter_server,list_filter_client)
+        print("Port: "+str(proxy_port)+" | Debug: "+str(debug_mode)+" | Buffer: "+str(BUFFER_SIZE)+" | Max_conn: "+str(max_client_conn)+
+        " | Filter_s: "+str(list_filter_server)+" | Filter_c: "+ str(list_filter_client))
 
         #Let's to prepare the CTRL + C signal to handle it and be able  to show the statistics before it comes out
         signal.signal(signal.SIGINT, signal_handler)
@@ -349,8 +384,6 @@ if __name__ == "__main__":
         output_conn_request_reply = []
         
         #We'ill store the request like this : [ [sockets_descriptor, str_host, [current_request_1, current_request_2] ] ]
-
-        
 
         # We can exit by CTRL+C signal :)
         while True:
@@ -395,7 +428,7 @@ if __name__ == "__main__":
                                     request = http_request_parser(data.decode('utf-8'))
                                 except:
                                     print( get_str_time_ProxPy() + ERROR_TO_RCV_FROM_NAV + ' \n\n'+str(data))
-                                    pass
+                                    break
 
                                 #Process the request
 
