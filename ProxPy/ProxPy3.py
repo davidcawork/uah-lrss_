@@ -5,6 +5,8 @@ import os
 import select
 import time
 import datetime
+import signal
+import pickle
 from random import *
 
 #Note: 
@@ -21,7 +23,7 @@ DEBUG_LEVEL_NORMAL = 2
 DEBUG_LEVEL_LOW = 1
 MSG_PROXPY_INACTIVE = '[ProxPy] ProxPy inactive ...'
 MSG_PROXPY_HI = '[ProxPy] Welcome to ProxPy CLI'
-MSG_PROXPY_BYE = '[ProxPy] Shutdown ProxPy ....'
+MSG_PROXPY_BYE = '[ProxPy] Turning off ProxPy ....'
 MSG_PROXPY_VERSION = '[ProxPy] Current version is: ProxPy v'+ str(VERSION_MAJOR_NUMBER) + '.' + str(VERSION_MINOR_NUMBER)
 MSG_PROXPY_NEW_INPUT_CONN = '[ProxPy] New input connection from: '
 ERROR_BAD_ARGVS_FROM_USER = '[ProxPy] Error, incorrect arguments: '
@@ -272,6 +274,12 @@ def close_all_conn(sockets_rd, input_conn, output_conn):
     except:
         print( get_str_time_ProxPy() + ERROR_TO_CLOSE_CONN +' Value conn list '+str(sockets_rd))
 
+#Handler CTRL+C
+def signal_handler(sig, frame):
+    print( '\n\n\n'+get_str_time_ProxPy() + MSG_PROXPY_BYE)
+    #Close al connections (Web navigators and SW) and exit
+    close_all_conn(sockets_rd, input_conn, output_conn)
+    sys.exit(0)
 
 if __name__ == "__main__":
 
@@ -288,11 +296,14 @@ if __name__ == "__main__":
         debug_mode = bool(sys.argv[2])
         BUFFER_SIZE = 1024*1000
 
+        #Let's to prepare the CTRL + C signal to handle it and be able  to show the statistics before it comes out
+        signal.signal(signal.SIGINT, signal_handler)
+
 	    # --- Prepare our TCP socket where we will hear connections from web navigators ---
         our_proxy_socket = get_our_socket(proxy_port)
 
         # --- Prepare our udp socket where w'ill log every single pet ---
-        # 
+        logger = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
 
         #Sockets to read
@@ -318,7 +329,7 @@ if __name__ == "__main__":
         while True:
             try:
 	    		# The optional timeout argument specifies a time-out as a floating point number in seconds.
-                events_rd,events_wr,events_excp = select.select( sockets_rd,[],[])
+                events_rd,events_wr,events_excp = select.select( sockets_rd,[],[], proxy_timeout)
 
             except KeyboardInterrupt:
                 print( '\n\n\n'+get_str_time_ProxPy() + MSG_PROXPY_BYE)
@@ -379,6 +390,7 @@ if __name__ == "__main__":
                                             output_conn.append(host_uri)
 
                                         #Send the request and add to the list output_conn_request_reply
+                                        logger.sendto(pickle.dumps(['DATA', 'REQUEST','data']) , ('localhost',8010))
                                         send_request_to_sw(host_uri, request, output_conn_request_reply)
                                     except:
                                         print(get_str_time_ProxPy() + ERROR_TO_PREPARE_REQUEST + request['method'] + ' request to '+get_host_from_header_list(request['headers_list']))
@@ -397,6 +409,7 @@ if __name__ == "__main__":
 
                                             if data_rpl:
                                                 #If data is not b' ' we send it back to web navigator
+                                                logger.sendto(pickle.dumps(['DATA', 'REPLY','data']) , ('localhost',8010))
                                                 sock_to_rcv.send(data_rpl)
                                             else:
                                                 #When we have sent it the reply close the host_uri socket and remove from our list
@@ -416,6 +429,12 @@ if __name__ == "__main__":
                                 sockets_rd.remove(sock_to_rcv)
                                 input_conn.remove(sock_to_rcv)
                                 remove_conn(input_conn_request_reply, sock_to_rcv)
+
+
+            #Prepare timeout msg :)
+
+            if not (events_rd or events_wr or events_excp):
+                print( get_str_time_ProxPy() + MSG_PROXPY_INACTIVE )
 
 
                         
