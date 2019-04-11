@@ -380,7 +380,9 @@ def close_all_conn(sockets_rd, input_conn, output_conn):
         for sck in sockets_rd:
             if sck != sys.stdin:
                 sck.close()
-        #sockets_rd.clear()
+        sockets_rd.clear()
+        sockets_rd.append(sys.stdin)
+        
     except:
         #print( get_str_time_ProxPy() + ERROR_TO_CLOSE_CONN +' Value conn list '+str(sockets_rd))
         add_to_msgHistory(msg_history,get_str_time_ProxPy() + ERROR_TO_CLOSE_CONN +' Value conn list '+str(sockets_rd))
@@ -730,44 +732,37 @@ if __name__ == "__main__":
                         print_msgs(msg_history)
 
                     elif is_command(msg,'/debug'):
-                        #To permit some url
+                       
                         cmd_used +=1 
                         debug_mode = getInt_msg(msg)
                         print_msgs(msg_history)
                     
                     elif is_command(msg,'/max_conn'):
-                        #To permit some url
+                        
                         cmd_used +=1 
                         max_client_conn = getInt_msg(msg)
                         print_msgs(msg_history)
 
                     elif is_command(msg,'/timeout'):
-                        #To permit some url
+                       
                         cmd_used +=1 
                         proxy_timeout = float(getInt_msg(msg))
                         print_msgs(msg_history)
 
-                    elif is_command(msg,'/reload'):
-                        #To print peer's table
-                        cmd_used +=1
-                        #reload func to close all connections 
-                        close_all_conn(sockets_rd, input_conn, output_conn) 
-                        print_msgs(msg_history)
-
                     elif is_command(msg,'/showfilter'):
-                        #To print active connections table
+                        
                         cmd_used +=1
                         print_filter_table(list_filter_client, list_filter_server) 
                         print_msgs(msg_history)
 
                     elif is_command(msg,'/timeup'):
-                        #To print time up in the multichat 
+                        #To print time up 
                         cmd_used +=1
                         timeup_cmd(time_init)
                         print_msgs(msg_history)
 
                     elif is_command(msg,'/stats'):
-                        #To print our stats in the multichat
+                        #To print our stats 
                         cmd_used +=1
                         stats_cmd(cmd_used,time_init,n_reply,n_request,debug_mode,max_client_conn,BUFFER_SIZE,proxy_timeout,len(msg_history))
                         print_msgs(msg_history)
