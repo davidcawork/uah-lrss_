@@ -12,13 +12,20 @@ from random import *
 
 #Note: 
 #
+#   ProxPy(v1.1) is a web proxy with capabilities to address HTTP request 1.1.
+#   It has a layer of filtering controlled with its powerful CLI.
+#   
+#   The realization of this project has been carried out in the subject of 
+#   Laboratory of networks, systems and services at the University of Alcalá
+#   by David Carrascal.
 #
+#   Have fun :) 
 #
 #   For more info: github.com/davidcawork
 
 #Global vars
 VERSION_MAJOR_NUMBER = 1
-VERSION_MINOR_NUMBER = 0
+VERSION_MINOR_NUMBER = 1
 DEBUG_LEVEL_MAX = 3
 DEBUG_LEVEL_NORMAL = 2
 DEBUG_LEVEL_LOW = 1
